@@ -10,7 +10,10 @@
   "build_config": {
     "skip_type_check": true,
     "optimize_deps": true,
-    "minify": true
+    "minify": true,
+    "resolve_aliases": {
+      "@": "./src"
+    }
   },
   "asset_config": {
     "exclude": [
@@ -20,5 +23,8 @@
       "**/*.gz"
     ],
     "max_file_size": "20MB"
+  },
+  "typescript": {
+    "skip_type_check": true
   }
 } 

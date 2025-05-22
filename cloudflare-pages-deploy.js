@@ -10,6 +10,7 @@ console.log('当前目录:', process.cwd());
 try {
   // 设置环境变量
   process.env.NEXT_TELEMETRY_DISABLED = '1';
+  process.env.NODE_OPTIONS = '--max-old-space-size=3072';
   
   // 只在非Windows环境下尝试删除node_modules
   const isWindows = process.platform === 'win32';
@@ -37,6 +38,55 @@ try {
     }
   }
 
+  // 确保workers-site目录存在
+  const workersSiteDir = path.join(process.cwd(), 'workers-site');
+  if (!fs.existsSync(workersSiteDir)) {
+    fs.mkdirSync(workersSiteDir, { recursive: true });
+    console.log('创建workers-site目录');
+  }
+
+  // 创建jsconfig.json
+  console.log('创建src/jsconfig.json...');
+  const srcDir = path.join(process.cwd(), 'src');
+  if (!fs.existsSync(srcDir)) {
+    fs.mkdirSync(srcDir, { recursive: true });
+  }
+  
+  const jsconfigContent = {
+    compilerOptions: {
+      baseUrl: '.',
+      paths: {
+        '@/*': ['./*']
+      }
+    }
+  };
+  
+  fs.writeFileSync(
+    path.join(srcDir, 'jsconfig.json'), 
+    JSON.stringify(jsconfigContent, null, 2)
+  );
+
+  // 确保babel.config.js存在
+  console.log('检查babel.config.js...');
+  const babelConfigPath = path.join(process.cwd(), 'babel.config.js');
+  if (!fs.existsSync(babelConfigPath)) {
+    const babelConfigContent = `module.exports = {
+  presets: [
+    [
+      'next/babel',
+      {
+        'preset-react': {
+          runtime: 'automatic',
+        },
+      },
+    ],
+  ],
+};`;
+    
+    fs.writeFileSync(babelConfigPath, babelConfigContent);
+    console.log('创建babel.config.js');
+  }
+
   // 运行deploy.js
   console.log('执行部署准备脚本...');
   require('./deploy.js');
@@ -53,13 +103,35 @@ try {
     console.log('Windows环境构建应用...');
     execSync('npm run build', { 
       stdio: 'inherit',
-      env: { ...process.env, NEXT_TELEMETRY_DISABLED: '1' } 
+      env: { 
+        ...process.env, 
+        NEXT_TELEMETRY_DISABLED: '1',
+        NODE_OPTIONS: '--max-old-space-size=3072'
+      } 
     });
   } else {
     // 构建应用
     console.log('构建应用...');
-    execSync('NEXT_TELEMETRY_DISABLED=1 npm run build', { stdio: 'inherit' });
+    execSync('NEXT_TELEMETRY_DISABLED=1 NODE_OPTIONS="--max-old-space-size=3072" npm run build', { stdio: 'inherit' });
   }
+
+  // 构建完成后复制必要的文件
+  console.log('复制必要文件到.next目录...');
+  const nextDir = path.join(process.cwd(), '.next');
+  
+  const filesToCopy = ['_routes.json', '_headers', '_redirects'];
+  
+  filesToCopy.forEach(file => {
+    const sourcePath = path.join(process.cwd(), file);
+    if (fs.existsSync(sourcePath)) {
+      fs.copyFileSync(sourcePath, path.join(nextDir, file));
+      console.log(`复制了${file}`);
+    }
+  });
+
+  // 确保typescript模块可用
+  console.log('确保TypeScript模块可用...');
+  execSync('npm install --no-save typescript @types/node @types/react', { stdio: 'inherit' });
 
   console.log('部署准备完成');
 } catch (error) {

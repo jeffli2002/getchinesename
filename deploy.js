@@ -3,63 +3,130 @@ const fs = require('fs');
 const path = require('path');
 const { rimraf } = require('rimraf');
 
-// 清理缓存文件夹
-try {
-  const nextCachePath = path.join(__dirname, '.next/cache');
-  if (fs.existsSync(nextCachePath)) {
-    console.log('清理.next/cache目录...');
-    rimraf.sync(nextCachePath);
-    console.log('.next/cache目录已清理');
+// 创建404.js API处理程序
+function create404Handler() {
+  const apiDir = path.join(process.cwd(), 'src', 'pages', 'api');
+  
+  if (!fs.existsSync(apiDir)) {
+    fs.mkdirSync(apiDir, { recursive: true });
   }
-} catch (err) {
-  console.error('清理.next/cache失败:', err);
+  
+  const handler404Path = path.join(apiDir, '404.js');
+  
+  if (!fs.existsSync(handler404Path)) {
+    const handler404Content = `
+export default function handler(req, res) {
+  res.status(404).json({ error: 'API endpoint not found' });
+}
+`;
+    
+    fs.writeFileSync(handler404Path, handler404Content);
+    console.log('创建了API 404处理程序');
+  }
 }
 
-// 确保在构建之前store/index.js存在
-try {
-  if (!fs.existsSync(path.join(__dirname, 'src/store/index.js'))) {
-    console.log('创建store/index.js');
-    
-    const content = `import { create } from 'zustand';
-import React from 'react';
-
-// 创建语言状态存储
-export const useLanguageStore = create((set) => ({
-  language: 'en', // 默认语言为英文
-  setLanguage: (lang) => set({ language: lang }),
-}));
-
-// 创建语言上下文
-export const LanguageContext = React.createContext(null);
-
-// 语言提供者组件
-export const LanguageProvider = ({ children }) => {
-  const store = useLanguageStore();
+// 创建jsconfig.json文件
+function createJsConfig() {
+  const srcDir = path.join(process.cwd(), 'src');
+  const jsConfigPath = path.join(srcDir, 'jsconfig.json');
   
-  return (
-    <LanguageContext.Provider value={store}>
-      {children}
-    </LanguageContext.Provider>
-  );
-};`;
-    
-    // 确保目录存在
-    const storeDir = path.join(__dirname, 'src/store');
-    if (!fs.existsSync(storeDir)) {
-      fs.mkdirSync(storeDir, { recursive: true });
-    }
-    
-    fs.writeFileSync(path.join(__dirname, 'src/store/index.js'), content);
+  if (!fs.existsSync(srcDir)) {
+    fs.mkdirSync(srcDir, { recursive: true });
   }
   
-  // 删除可能存在的index.ts文件
-  const tsFile = path.join(__dirname, 'src/store/index.ts');
-  if (fs.existsSync(tsFile)) {
+  if (!fs.existsSync(jsConfigPath)) {
+    const jsConfigContent = {
+      compilerOptions: {
+        baseUrl: '.',
+        paths: {
+          '@/*': ['./*']
+        }
+      }
+    };
+    
+    fs.writeFileSync(jsConfigPath, JSON.stringify(jsConfigContent, null, 2));
+    console.log('创建了jsconfig.json');
+  }
+}
+
+// 创建tsconfig.json文件
+function createTsConfig() {
+  const tsConfigPath = path.join(process.cwd(), 'tsconfig.json');
+  
+  if (!fs.existsSync(tsConfigPath)) {
+    const tsConfigContent = {
+      compilerOptions: {
+        target: "es5",
+        lib: ["dom", "dom.iterable", "esnext"],
+        allowJs: true,
+        skipLibCheck: true,
+        strict: false,
+        forceConsistentCasingInFileNames: true,
+        noEmit: true,
+        esModuleInterop: true,
+        module: "esnext",
+        moduleResolution: "node",
+        resolveJsonModule: true,
+        isolatedModules: true,
+        jsx: "preserve",
+        incremental: true,
+        baseUrl: ".",
+        paths: {
+          "@/*": ["./src/*"]
+        }
+      },
+      include: ["next-env.d.ts", "**/*.ts", "**/*.tsx"],
+      exclude: ["node_modules"]
+    };
+    
+    fs.writeFileSync(tsConfigPath, JSON.stringify(tsConfigContent, null, 2));
+    console.log('创建了tsconfig.json');
+  }
+}
+
+// 删除可能引起问题的文件
+function deleteProblematicFiles() {
+  const storeIndexPath = path.join(process.cwd(), 'src', 'store', 'index.ts');
+  
+  if (fs.existsSync(storeIndexPath)) {
+    fs.unlinkSync(storeIndexPath);
     console.log('删除store/index.ts');
-    fs.unlinkSync(tsFile);
   }
   
-  console.log('部署准备完成');
-} catch (err) {
-  console.error('部署准备失败:', err);
-} 
+  // 删除一些不必要的图片文件
+  const imageFilesToDelete = [
+    'public/images/chinese-calligraphy.svg',
+    'public/images/chinese-background.svg',
+    'public/images/new-chinese-calligraphy.svg',
+    'public/images/new-chinese-background.svg',
+    'public/images/chinese-landscape.html',
+    'public/images/chinese-landscape.jpg',
+    'public/images/chinese-landscape.jpg.html'
+  ];
+  
+  imageFilesToDelete.forEach(filePath => {
+    const fullPath = path.join(process.cwd(), filePath);
+    if (fs.existsSync(fullPath)) {
+      fs.unlinkSync(fullPath);
+      console.log(`删除${filePath}`);
+    }
+  });
+}
+
+// 主函数
+function main() {
+  try {
+    deleteProblematicFiles();
+    createJsConfig();
+    createTsConfig();
+    create404Handler();
+    
+    console.log('部署准备完成');
+  } catch (error) {
+    console.error('部署过程中出错:', error);
+    process.exit(1);
+  }
+}
+
+// 执行主函数
+main(); 

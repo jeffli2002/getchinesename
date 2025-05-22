@@ -1,28 +1,27 @@
-name = "getchinesename"
-compatibility_date = "2025-05-22"
+name = "chinese-name-generator"
+main = "workers-site/index.js"
+compatibility_date = "2023-05-18"
 compatibility_flags = ["nodejs_compat"]
-
-[build]
-command = "if [ -f /bin/bash ]; then bash cloudflare-pages-deploy.sh; else node cloudflare-pages-deploy.js; fi"
+workers_dev = true
 
 [site]
 bucket = ".next"
 
-# 限制大文件上传
-[site.upload]
-format = "directory"
-dir = ".next"
-include = ["**/*"]
-exclude = [
-  ".next/cache/**/*",
-  "**/*.pack",
-  "**/*.pack.gz",
-  "**/*.gz"
-]
+# 在Cloudflare Pages配置中设置文件排除
+# 不要在wrangler.toml中使用site.upload和cache字段
 
-# 禁用文件缓存并指定最大文件大小
-[cache]
-max_file_size = "10MB"
+[build]
+command = "npm run build"
+watch_dir = "src"
 
 [env.production]
-workers_dev = true 
+workers_dev = false
+route = "www.chinese-name-generator.com/*"
+zone_id = ""
+
+[env.staging]
+name = "chinese-name-generator-staging"
+workers_dev = true
+
+[triggers]
+crons = [] 

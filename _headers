@@ -3,6 +3,7 @@
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
   Permissions-Policy: camera=(), microphone=(), geolocation=()
+  X-XSS-Protection: 1; mode=block
   Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' cdn.jsdelivr.net fastly.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' cdn.jsdelivr.net fastly.jsdelivr.net; font-src 'self'; frame-src 'none'; object-src 'none' 
 
 # 静态资源长期缓存
@@ -11,13 +12,11 @@
 
 # 图片文件缓存
 /images/*
-  Cache-Control: public, max-age=604800
+  Cache-Control: public, max-age=86400
 
 # API响应不缓存
 /api/*
-  Cache-Control: no-store, no-cache, must-revalidate, proxy-revalidate
-  Pragma: no-cache
-  Expires: 0
+  Cache-Control: no-store
 
 # 字体文件缓存
 /fonts/*
