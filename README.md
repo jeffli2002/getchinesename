@@ -1,0 +1,2 @@
+# GetChineseName
+generate Chinese name
