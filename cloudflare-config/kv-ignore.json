@@ -1,0 +1,11 @@
+{
+  "ignorePatterns": [
+    ".next/cache/**/*",
+    ".next/cache/webpack/**/*",
+    ".next/cache/webpack/client-production/*",
+    ".next/cache/webpack/server-production/*",
+    "**/*.pack",
+    "**/*.pack.gz",
+    "node_modules/.cache/**/*"
+  ]
+} 
