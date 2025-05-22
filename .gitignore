@@ -1,23 +1,23 @@
-# 依赖
+# 依赖目录
 /node_modules
 /.pnp
 .pnp.js
 
-# 测试
+# 测试覆盖率
 /coverage
 
-# Next.js
+# next.js构建输出
 /.next/
 /out/
 
 # 生产环境构建
 /build
 
-# 杂项
+# 开发环境
 .DS_Store
 *.pem
 
-# 调试
+# 调试日志
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
@@ -28,5 +28,25 @@ yarn-error.log*
 .env.test.local
 .env.production.local
 
-# Vercel
+# vercel相关
 .vercel
+
+# wrangler工作目录
+.wrangler/
+
+# 测试报告
+/test-results/
+/playwright-report/
+/playwright/.cache/
+
+# 大型二进制文件
+**/*.pack
+**/*.pack.gz
+**/*.gz
+
+# 编辑器目录
+.idea/
+.vscode/
+
+# Cloudflare相关临时文件
+.cloudflare/ 
