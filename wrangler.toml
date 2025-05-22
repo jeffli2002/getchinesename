@@ -1,13 +1,28 @@
-name = "chinese-name-generator"
+name = "getchinesename"
 compatibility_date = "2025-05-22"
 compatibility_flags = ["nodejs_compat"]
-main = "workers-site/index.js"
 
 [build]
 command = "npm run build"
 
 [site]
 bucket = ".next"
+
+# 限制大文件上传
+[site.upload]
+format = "directory"
+dir = ".next"
+include = ["**/*"]
+exclude = [
+  ".next/cache/**/*",
+  "**/*.pack",
+  "**/*.pack.gz",
+  "**/*.gz"
+]
+
+# 禁用文件缓存并指定最大文件大小
+[cache]
+max_file_size = "10MB"
 
 [env.production]
 workers_dev = true 

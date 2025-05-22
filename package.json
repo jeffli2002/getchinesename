@@ -8,8 +8,8 @@
     "dev:alt2": "next dev -p 3002",
     "dev:alt3": "next dev -p 3003",
     "build": "next build",
-    "prebuild": "node deploy.js && echo 'Preparing build environment for Cloudflare Pages...'",
-    "cloudflare:build": "next build",
+    "prebuild": "NEXT_TELEMETRY_DISABLED=1 node deploy.js && echo 'Preparing build environment for Cloudflare Pages...'",
+    "cloudflare:build": "NEXT_TELEMETRY_DISABLED=1 next build",
     "cloudflare:deploy": "wrangler deploy",
     "start": "next start",
     "start:alt": "next start -p 3001",
@@ -56,6 +56,7 @@
     "jest": "^29.7.0",
     "jest-environment-jsdom": "^29.7.0",
     "postcss": "8.4.31",
+    "rimraf": "^5.0.5",
     "tailwindcss": "3.3.3",
     "typescript": "5.2.2"
   }

@@ -1,6 +1,19 @@
 // 部署辅助脚本
 const fs = require('fs');
 const path = require('path');
+const rimraf = require('rimraf');
+
+// 清理缓存文件夹
+try {
+  const nextCachePath = path.join(__dirname, '.next/cache');
+  if (fs.existsSync(nextCachePath)) {
+    console.log('清理.next/cache目录...');
+    rimraf.sync(nextCachePath);
+    console.log('.next/cache目录已清理');
+  }
+} catch (err) {
+  console.error('清理.next/cache失败:', err);
+}
 
 // 确保在构建之前store/index.js存在
 try {
@@ -29,6 +42,12 @@ export const LanguageProvider = ({ children }) => {
     </LanguageContext.Provider>
   );
 };`;
+    
+    // 确保目录存在
+    const storeDir = path.join(__dirname, 'src/store');
+    if (!fs.existsSync(storeDir)) {
+      fs.mkdirSync(storeDir, { recursive: true });
+    }
     
     fs.writeFileSync(path.join(__dirname, 'src/store/index.js'), content);
   }

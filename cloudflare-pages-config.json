@@ -2,9 +2,22 @@
   "build_command": "npm run build",
   "destination_dir": ".next",
   "env_vars": {
-    "NODE_VERSION": "18.17.0"
+    "NODE_VERSION": "18.17.0",
+    "NEXT_TELEMETRY_DISABLED": "1",
+    "NODE_OPTIONS": "--max-old-space-size=3072"
   },
   "build_config": {
-    "skip_type_check": true
+    "skip_type_check": true,
+    "optimize_deps": true,
+    "minify": true
+  },
+  "asset_config": {
+    "exclude": [
+      ".next/cache/**/*",
+      "**/*.pack",
+      "**/*.pack.gz",
+      "**/*.gz"
+    ],
+    "max_file_size": "20MB"
   }
 } 
