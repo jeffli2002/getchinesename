@@ -1,8 +1,9 @@
+import React, { ReactNode } from 'react';
 import Header from './Header';
 import Footer from './Footer';
 
 interface LayoutProps {
-  children: React.ReactNode;
+  children: ReactNode;
 }
 
 const Layout = ({ children }: LayoutProps) => {
@@ -17,4 +18,4 @@ const Layout = ({ children }: LayoutProps) => {
   );
 };
 
-export default Layout; 
+export default Layout;

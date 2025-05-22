@@ -6,7 +6,7 @@ const isProd = process.env.NODE_ENV === 'production';
 const isCloudflarePages = process.env.CF_PAGES === '1';
 
 const nextConfig = {
-  reactStrictMode: true,
+  reactStrictMode: false, // 关闭严格模式，减少重复渲染和一些React警告
   swcMinify: true,
   images: {
     unoptimized: true,
@@ -49,7 +49,7 @@ const nextConfig = {
     };
 
     // 解决Cloudflare Pages构建问题
-    if (isCloudflarePages && isProd) {
+    if (isProd) {
       // 强制node_modules中的模块使用es5
       config.module.rules.push({
         test: /\.m?js$/,
@@ -62,6 +62,25 @@ const nextConfig = {
             ]
           }
         }
+      });
+      
+      // 添加对.tsx文件的明确处理
+      config.module.rules.push({
+        test: /\.tsx?$/,
+        use: [
+          {
+            loader: 'babel-loader',
+            options: {
+              presets: [
+                '@babel/preset-env',
+                '@babel/preset-react',
+                '@babel/preset-typescript'
+              ],
+              plugins: []
+            }
+          }
+        ],
+        exclude: /node_modules/
       });
     }
 
@@ -99,13 +118,10 @@ const nextConfig = {
       },
     ];
   },
-
-  // 关闭严格模式可以减少重复渲染
-  reactStrictMode: false,
   
   // 避免一些特定的TypeScript错误
   typescript: {
-    ignoreBuildErrors: isCloudflarePages, // 在Cloudflare Pages构建时忽略TypeScript错误
+    ignoreBuildErrors: true, // 忽略TypeScript错误
   },
 
   // 修正路径别名

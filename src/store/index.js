@@ -13,10 +13,10 @@ export const LanguageContext = React.createContext(null);
 // 语言提供者组件
 export const LanguageProvider = ({ children }) => {
   const store = useLanguageStore();
-  
+
   return (
     <LanguageContext.Provider value={store}>
       {children}
     </LanguageContext.Provider>
   );
-}; 
+};

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { ReactNode } from 'react';
 import { useLanguageStore } from '@/store/index.js';
 import { motion } from 'framer-motion';
 import { GiQuill } from 'react-icons/gi';
@@ -14,7 +14,7 @@ interface Feature {
   id?: number;
   title: FeatureContent;
   description: FeatureContent;
-  icon: React.ReactNode;
+  icon: ReactNode;
 }
 
 const features: Feature[] = [

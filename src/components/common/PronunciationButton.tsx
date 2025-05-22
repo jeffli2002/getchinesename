@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, ReactNode } from 'react';
 import { playPronunciation } from '@/utils/pronunciation';
 
 interface PronunciationButtonProps {
@@ -9,7 +9,7 @@ interface PronunciationButtonProps {
 }
 
 // 格式化拼音并添加声调标记
-const formatPinyinWithTones = (pinyin: string): React.ReactNode => {
+const formatPinyinWithTones = (pinyin: string): ReactNode => {
   if (!pinyin) return null;
   
   // 分割拼音音节

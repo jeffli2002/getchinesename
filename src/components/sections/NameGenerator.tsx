@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, ReactNode } from 'react';
 import { useLanguageStore } from '@/store/index.js';
 import { useNameGenerator } from '@/hooks/useNameGenerator';
 import { NameInput } from '@/types';
@@ -7,7 +7,7 @@ import { motion } from 'framer-motion';
 import { FiShare2, FiCheck } from 'react-icons/fi';
 
 // 格式化拼音并标记声调样式
-const formatPinyin = (pinyin: string): React.ReactNode => {
+const formatPinyin = (pinyin: string): ReactNode => {
   if (!pinyin) return null;
   
   // 分割拼音音节
