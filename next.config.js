@@ -18,6 +18,49 @@ const nextConfig = {
   
   // 配置路径别名
   webpack: (config, { isServer, webpack }) => {
+    // 禁用持久缓存，避免大文件问题
+    config.cache = false;
+    
+    // 调整代码分块策略，避免大文件
+    if (config.optimization && config.optimization.splitChunks) {
+      config.optimization.splitChunks = {
+        chunks: 'all',
+        maxInitialRequests: 30,
+        maxAsyncRequests: 30,
+        minSize: 10000,
+        maxSize: 20000000, // 20MB，保持在Cloudflare限制以下
+        cacheGroups: {
+          vendors: false, // 禁用默认的vendor分组
+          framework: {
+            name: 'framework',
+            test: /[\\/]node_modules[\\/](react|react-dom|scheduler|prop-types|next)[\\/]/,
+            priority: 40,
+            chunks: 'all',
+          },
+          lib: {
+            test: /[\\/]node_modules[\\/]/,
+            priority: 30,
+            minChunks: 2,
+            maxSize: 20000000, // 20MB
+            chunks: 'all',
+          },
+          components: {
+            name: 'components',
+            test: /[\\/]src[\\/]components[\\/]/,
+            minChunks: 2,
+            priority: 20,
+            chunks: 'all',
+          },
+          utils: {
+            name: 'utils',
+            test: /[\\/]src[\\/]utils[\\/]/,
+            minChunks: 2,
+            priority: 10,
+            chunks: 'all',
+          },
+        },
+      };
+    }
     // 添加路径别名
     config.resolve.alias['@'] = path.join(__dirname, 'src');
     
@@ -45,7 +88,9 @@ const nextConfig = {
           test: /[\\/]node_modules[\\/]/,
           name(module) {
             // 得到 node_modules/packageName/sub/path 中的 packageName
-            const packageName = module.context.match(/[\\/]node_modules[\\/](.*?)([\\/]|$)/)[1];
+            if (!module.context) return 'vendor';
+            const match = module.context.match(/[\\/]node_modules[\\/](.*?)([\\/]|$)/);
+            const packageName = match ? match[1] : 'vendor';
             // 避免不符合规范的包名
             return `npm.${packageName.replace('@', '')}`;
           },
