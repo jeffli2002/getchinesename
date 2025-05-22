@@ -5,6 +5,9 @@ const path = require('path');
 const isProd = process.env.NODE_ENV === 'production';
 const isCloudflarePages = process.env.CF_PAGES === '1';
 
+// 检查是否是Cloudflare部署
+const isCloudflare = isCloudflarePages || process.env.NEXT_RUNTIME === 'edge';
+
 const nextConfig = {
   reactStrictMode: false, // 关闭严格模式，减少重复渲染和一些React警告
   swcMinify: true,
@@ -28,14 +31,58 @@ const nextConfig = {
       );
     }
 
-    // 限制模块大小
+    // 禁用持久缓存，避免大文件问题
+    if (isCloudflare) {
+      config.cache = false;
+    }
+
+    // 限制模块大小 - 针对Cloudflare的25MB限制调整
     if (isProd) {
       config.optimization.splitChunks = {
         chunks: 'all',
-        maxInitialRequests: 25,
-        minSize: 20000,
-        maxSize: 1000000, // 1MB
+        maxInitialRequests: 30,
+        maxAsyncRequests: 30,
+        minSize: 10000,
+        maxSize: 20000000, // 20MB - 低于Cloudflare的25MB限制
+        cacheGroups: {
+          vendors: false, // 禁用默认的vendor分组
+          framework: {
+            name: 'framework',
+            test: /[\\/]node_modules[\\/](react|react-dom|scheduler|prop-types|next)[\\/]/,
+            priority: 40,
+            chunks: 'all',
+            enforce: true,
+          },
+          lib: {
+            test: /[\\/]node_modules[\\/]/,
+            priority: 30,
+            minChunks: 2,
+            maxSize: 20000000, // 20MB
+            chunks: 'all',
+          },
+          components: {
+            name: 'components',
+            test: /[\\/]src[\\/]components[\\/]/,
+            minChunks: 2,
+            priority: 20,
+            chunks: 'all',
+          },
+          utils: {
+            name: 'utils',
+            test: /[\\/]src[\\/]utils[\\/]/,
+            minChunks: 2,
+            priority: 10,
+            chunks: 'all',
+          },
+        },
       };
+
+      // 强制分割大型模块
+      config.plugins.push(
+        new webpack.optimize.LimitChunkCountPlugin({
+          maxChunks: 50, // 增加分块数量，减小每个块的大小
+        })
+      );
     }
 
     // 安全处理模块上下文
@@ -48,23 +95,8 @@ const nextConfig = {
       },
     };
 
-    // 解决Cloudflare Pages构建问题
+    // 添加对.tsx文件的明确处理
     if (isProd) {
-      // 强制node_modules中的模块使用es5
-      config.module.rules.push({
-        test: /\.m?js$/,
-        include: /node_modules/,
-        use: {
-          loader: 'babel-loader',
-          options: {
-            presets: [
-              ['@babel/preset-env', { targets: { node: 'current' } }]
-            ]
-          }
-        }
-      });
-      
-      // 添加对.tsx文件的明确处理
       config.module.rules.push({
         test: /\.tsx?$/,
         use: [
@@ -131,7 +163,33 @@ const nextConfig = {
 
   env: {
     NEXT_PUBLIC_BASE_URL: process.env.NEXT_PUBLIC_BASE_URL || '',
-  }
+  },
+
+  // Cloudflare Pages优化配置
+  // 这只会在Cloudflare Pages环境中应用
+  ...(isCloudflare && {
+    // 禁用webpack缓存以解决KV大小限制问题
+    onDemandEntries: {
+      // 避免长期缓存
+      maxInactiveAge: 60 * 1000, // 1分钟
+      pagesBufferLength: 1,      // 保持少量页面在内存中
+    },
+    
+    // 优化构建
+    compress: true,             // 启用压缩
+    productionBrowserSourceMaps: false, // 禁用源映射以减小文件大小
+    
+    // 缓存控制
+    generateEtags: true,
+    
+    // 优化图像
+    images: {
+      minimumCacheTTL: 60 * 60 * 24 * 7, // 7天
+      deviceSizes: [640, 750, 828, 1080], // 减少图像尺寸变体
+      imageSizes: [16, 32, 48, 64, 96],
+      formats: ['image/webp'],           // 只使用WebP格式
+    },
+  }),
 };
 
 module.exports = nextConfig; 

@@ -209,12 +209,77 @@ function updateConfigs() {
   }
 }
 
+// 修改Next.js配置以控制文件大小
+function updateNextConfig() {
+  console.log('更新next.config.js以控制文件大小...');
+  const nextConfigPath = path.join(process.cwd(), 'next.config.js');
+  
+  // 读取现有配置
+  let nextConfig = fs.readFileSync(nextConfigPath, 'utf8');
+  
+  // 修改webpack配置，增加分块大小控制
+  if (!nextConfig.includes('minSize: 10000')) {
+    nextConfig = nextConfig.replace(
+      /webpack: \(config, {(.+?)}\) => {/s,
+      `webpack: (config, {$1}) => {
+    // 禁用持久缓存，避免大文件问题
+    config.cache = false;
+    
+    // 调整代码分块策略，避免大文件
+    if (config.optimization && config.optimization.splitChunks) {
+      config.optimization.splitChunks = {
+        chunks: 'all',
+        maxInitialRequests: 30,
+        maxAsyncRequests: 30,
+        minSize: 10000,
+        maxSize: 20000000, // 20MB，保持在Cloudflare限制以下
+        cacheGroups: {
+          vendors: false, // 禁用默认的vendor分组
+          framework: {
+            name: 'framework',
+            test: /[\\\\/]node_modules[\\\\/](react|react-dom|scheduler|prop-types|next)[\\\\/]/,
+            priority: 40,
+            chunks: 'all',
+          },
+          lib: {
+            test: /[\\\\/]node_modules[\\\\/]/,
+            priority: 30,
+            minChunks: 2,
+            maxSize: 20000000, // 20MB
+            chunks: 'all',
+          },
+          components: {
+            name: 'components',
+            test: /[\\\\/]src[\\\\/]components[\\\\/]/,
+            minChunks: 2,
+            priority: 20,
+            chunks: 'all',
+          },
+          utils: {
+            name: 'utils',
+            test: /[\\\\/]src[\\\\/]utils[\\\\/]/,
+            minChunks: 2,
+            priority: 10,
+            chunks: 'all',
+          },
+        },
+      };
+    }`
+    );
+  }
+  
+  // 保存修改后的配置
+  fs.writeFileSync(nextConfigPath, nextConfig);
+  console.log('next.config.js已更新');
+}
+
 // 主函数
 async function main() {
   try {
     // 设置环境变量
     process.env.NEXT_TELEMETRY_DISABLED = '1';
     process.env.NODE_ENV = 'production';
+    process.env.NEXT_RUNTIME = 'edge'; // 使用Edge运行时
     
     // 执行清理和修复
     cleanDirectories();
@@ -222,14 +287,31 @@ async function main() {
     updateStore();
     fixReactFiles();
     forceUpdateLayout();
+    updateNextConfig(); // 添加这行来控制文件大小
     
     // 执行部署.js脚本
     console.log('执行deploy.js...');
     execSync('node deploy.js', { stdio: 'inherit' });
     
-    // 构建项目
+    // 构建项目，添加参数减小构建体积
     console.log('开始构建项目...');
-    execSync('npx next build', { stdio: 'inherit' });
+    execSync('npx next build', { 
+      stdio: 'inherit',
+      env: {
+        ...process.env,
+        NEXT_TELEMETRY_DISABLED: '1',
+        NODE_ENV: 'production',
+        MINIMIZE_ASSETS: 'true', // 添加自定义变量以最小化资产
+      }
+    });
+    
+    // 删除可能导致问题的缓存文件
+    console.log('清理webpack缓存文件...');
+    const webpackCacheDir = path.join(process.cwd(), '.next/cache/webpack');
+    if (fs.existsSync(webpackCacheDir)) {
+      rimraf.sync(webpackCacheDir);
+      console.log('已清理webpack缓存文件');
+    }
     
     console.log('✅ 构建完成!');
   } catch (error) {

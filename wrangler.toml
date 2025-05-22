@@ -1,6 +1,6 @@
 name = "chinese-name-generator"
-main = "workers-site/index.js"
-compatibility_date = "2023-05-18"
+main = ".next/server.js"
+compatibility_date = "2023-09-01"
 compatibility_flags = ["nodejs_compat"]
 workers_dev = true
 
@@ -11,13 +11,39 @@ bucket = ".next"
 # 不要在wrangler.toml中使用site.upload和cache字段
 
 [build]
-command = "npm run build"
+command = "npm run cloudflare-build"
 watch_dir = "src"
+upload.format = "service-worker"
+
+[dev]
+port = 3000
 
 [env.production]
-workers_dev = false
-route = "www.chinese-name-generator.com/*"
-zone_id = ""
+name = "chinese-name-generator-prod"
+routes = [
+  { pattern = "getchinesename.pages.dev/*", zone_id = "your-zone-id-here" }
+]
+
+# KV命名空间配置
+[[kv_namespaces]]
+binding = "ASSETS"
+id = "assets-namespace-id"
+
+# 禁用webpack缓存持久化
+[build.upload]
+format = "service-worker"
+
+# Pages配置
+[build.pages]
+directory = ".next"
+minify = true
+
+# 允许较大的KV条目 (不超过25MB限制)
+[limits]
+kv_max_entry_size = "24MiB"
+
+[placement]
+mode = "smart"
 
 [env.staging]
 name = "chinese-name-generator-staging"

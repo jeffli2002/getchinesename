@@ -20,6 +20,14 @@ if [ ! -d "workers-site" ]; then
   echo "创建workers-site目录"
 fi
 
+# 确保.cloudflare目录存在
+echo "检查.cloudflare目录..."
+if [ ! -d ".cloudflare" ]; then
+  mkdir -p .cloudflare
+  mkdir -p .cloudflare/workers-site
+  echo "创建.cloudflare目录结构"
+fi
+
 # 确保src/store目录存在并创建index.js
 echo "创建store/index.js..."
 mkdir -p src/store
@@ -72,6 +80,7 @@ module.exports = {
       {
         'preset-react': {
           runtime: 'automatic',
+          importSource: 'react',
         },
       },
     ],
@@ -122,12 +131,72 @@ if [ -f "src/store/index.ts" ]; then
   echo "删除了src/store/index.ts"
 fi
 
-# 运行deploy.js脚本
-echo "执行deploy.js脚本..."
-node deploy.js
+# 创建Cloudflare特定配置
+echo "创建Cloudflare Pages配置文件..."
+mkdir -p .cloudflare
+cat > .cloudflare/kv-ignore.json << EOF
+{
+  "ignorePatterns": [
+    ".next/cache/**/*",
+    ".next/cache/webpack/**/*",
+    ".next/cache/webpack/client-production/*",
+    ".next/cache/webpack/server-production/*",
+    "**/*.pack",
+    "**/*.pack.gz",
+    "node_modules/.cache/**/*"
+  ]
+}
+EOF
 
-# 构建项目
-echo "构建项目..."
-npm run build
+cat > .cloudflare/pages-config.json << EOF
+{
+  "name": "getchinesename",
+  "build": {
+    "baseDir": ".next",
+    "command": "npm run cloudflare-build",
+    "publicPath": "",
+    "ignoredFiles": ["node_modules/.cache/**", ".next/cache/**"]
+  },
+  "deployment": {
+    "routes": [
+      { "pattern": "/*", "script": "index.js" }
+    ],
+    "kv": {
+      "ASSETS": {
+        "binding": "ASSETS"
+      }
+    }
+  },
+  "env": {
+    "NODE_VERSION": "18",
+    "NEXT_TELEMETRY_DISABLED": "1",
+    "NEXT_RUNTIME": "edge"
+  },
+  "limits": {
+    "kv_max_entry_size": "24MiB"
+  },
+  "build_config": {
+    "upload_config": {
+      "max_file_size": 25000000,
+      "chunk_size": 10000000,
+      "max_chunks": 100
+    },
+    "optimization": {
+      "minify_js": true,
+      "minify_css": true,
+      "minify_html": true,
+      "treeshake": true
+    }
+  }
+}
+EOF
+
+# 运行cloudflare-build.js脚本
+echo "执行cloudflare-build.js脚本..."
+node cloudflare-build.js
+
+# 清理webpack缓存文件，避免文件大小问题
+echo "清理webpack缓存文件..."
+rm -rf .next/cache/webpack
 
 echo "部署脚本完成!" 

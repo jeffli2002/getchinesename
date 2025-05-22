@@ -86,6 +86,7 @@ export const LanguageProvider = ({ children }) => {
       {
         'preset-react': {
           runtime: 'automatic',
+          importSource: 'react',
         },
       },
     ],
@@ -94,6 +95,62 @@ export const LanguageProvider = ({ children }) => {
   
   fs.writeFileSync(babelConfigPath, babelConfigContent);
   console.log('创建了babel.config.js');
+  
+  // 修改next.config.js文件
+  console.log('修改next.config.js以优化文件大小...');
+  const nextConfigPath = path.join(process.cwd(), 'next.config.js');
+  
+  if (fs.existsSync(nextConfigPath)) {
+    let nextConfig = fs.readFileSync(nextConfigPath, 'utf8');
+    
+    // 修改webpack配置，避免生成大文件
+    if (!nextConfig.includes('config.cache = false')) {
+      nextConfig = nextConfig.replace(
+        /webpack: \(config, {(.+?)}\) => {/s,
+        `webpack: (config, {$1}) => {
+    // 禁用持久缓存，避免生成过大文件
+    config.cache = false;
+    
+    // 优化代码分块策略
+    if (config.optimization && config.optimization.splitChunks) {
+      config.optimization.splitChunks = {
+        chunks: 'all',
+        maxInitialRequests: 30,
+        maxAsyncRequests: 30,
+        minSize: 10000,
+        maxSize: 20000000, // 20MB
+        cacheGroups: {
+          vendors: false,
+          framework: {
+            name: 'framework',
+            test: /[\\\\/]node_modules[\\\\/](react|react-dom|scheduler|next)[\\\\/]/,
+            priority: 40,
+            chunks: 'all',
+            enforce: true,
+          },
+          lib: {
+            test: /[\\\\/]node_modules[\\\\/]/,
+            priority: 30,
+            minChunks: 2,
+            maxSize: 20000000,
+            chunks: 'all',
+          },
+          commons: {
+            name: 'commons',
+            minChunks: 2,
+            priority: 20,
+            chunks: 'all',
+            maxSize: 20000000,
+          }
+        },
+      };
+    }`
+      );
+      
+      fs.writeFileSync(nextConfigPath, nextConfig);
+      console.log('已更新next.config.js');
+    }
+  }
   
   // 修复React组件导入 - 全面递归遍历
   console.log('修复React组件导入...');
@@ -231,7 +288,22 @@ export default Layout;`;
   
   // 构建项目
   console.log('构建项目...');
-  execSync('npm run build', { stdio: 'inherit' });
+  execSync('npx next build', { 
+    stdio: 'inherit',
+    env: {
+      ...process.env,
+      NEXT_TELEMETRY_DISABLED: '1',
+      NODE_ENV: 'production',
+    }
+  });
+  
+  // 清理webpack缓存文件
+  console.log('清理webpack缓存文件...');
+  const webpackCacheDir = path.join(process.cwd(), '.next/cache/webpack');
+  if (fs.existsSync(webpackCacheDir)) {
+    rimraf.sync(webpackCacheDir);
+    console.log('已清理webpack缓存文件');
+  }
   
   console.log('部署脚本完成!');
 } catch (error) {

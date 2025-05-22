@@ -82,7 +82,7 @@ npm run build
 
 ### Cloudflare Pages 部署
 
-本项目已针对Cloudflare Pages进行了特殊优化，解决了React导入和TypeScript相关问题。
+本项目已针对Cloudflare Pages进行了特殊优化，解决了React导入、TypeScript相关问题以及文件大小限制问题。
 
 #### 部署方法
 
@@ -90,7 +90,7 @@ npm run build
    ```bash
    npm run cloudflare-build
    ```
-   然后将`.next`和`public`目录上传到Cloudflare Pages。
+   然后将`.next`目录上传到Cloudflare Pages。
 
 2. **Cloudflare Pages自动部署**:
    
@@ -104,16 +104,39 @@ npm run build
    - `NODE_VERSION`: `18`
    - `NEXT_TELEMETRY_DISABLED`: `1`
 
+#### 解决文件大小限制问题
+
+Cloudflare Pages对文件大小有25MB的限制，本项目通过以下方式解决此问题：
+
+1. **优化webpack配置**：修改了Next.js的webpack配置，调整代码分块策略，确保生成的文件不超过限制。
+
+2. **禁用缓存持久化**：禁用webpack的持久缓存，避免生成过大的缓存文件。
+
+3. **构建后清理**：在构建完成后自动清理`.next/cache/webpack`目录，移除可能超出大小限制的文件。
+
+4. **文件分块优化**：将大型依赖项如React库和其他node_modules分成更小的块。
+
+如果仍然遇到文件大小问题，可以尝试：
+```bash
+# 清理构建和缓存
+npm run prebuild
+
+# 使用优化过的构建脚本
+npm run cloudflare-build
+```
+
 #### 常见问题解决
 
-如果在Cloudflare Pages构建中遇到React相关错误，特别是`Cannot find namespace 'React'`或类似错误，可以尝试:
+如果在Cloudflare Pages构建中遇到其他问题：
 
-1. 手动运行部署脚本：
+1. **React相关错误**：如`Cannot find namespace 'React'`，确保使用`cloudflare-build.js`脚本构建。
+
+2. **KV存储限制错误**：如果出现`File is too big, it should be under 25 MiB`，确保删除了webpack缓存文件：
    ```bash
-   node cloudflare-build.js
+   rm -rf .next/cache/webpack
    ```
 
-2. 检查构建日志中是否有React导入相关的错误。
+3. **部署失败**：检查构建日志中的具体错误，并确保wrangler.toml中的配置正确。
 
 ## 贡献
 
