@@ -273,6 +273,183 @@ function updateNextConfig() {
   console.log('next.config.js已更新');
 }
 
+// 创建Cloudflare特定配置
+function createCloudflareConfig() {
+  console.log('创建Cloudflare Pages配置文件...');
+  
+  // 确保目录存在
+  const configDir = path.join(process.cwd(), 'cloudflare-config');
+  const workersDir = path.join(configDir, 'workers-site');
+  
+  if (!fs.existsSync(configDir)) {
+    fs.mkdirSync(configDir, { recursive: true });
+  }
+  
+  if (!fs.existsSync(workersDir)) {
+    fs.mkdirSync(workersDir, { recursive: true });
+  }
+  
+  // 创建或更新 kv-ignore.json
+  const kvIgnorePath = path.join(configDir, 'kv-ignore.json');
+  const kvIgnoreContent = {
+    ignorePatterns: [
+      ".next/cache/**/*",
+      ".next/cache/webpack/**/*",
+      ".next/cache/webpack/client-production/*",
+      ".next/cache/webpack/server-production/*",
+      "**/*.pack",
+      "**/*.pack.gz",
+      "node_modules/.cache/**/*"
+    ]
+  };
+  
+  fs.writeFileSync(kvIgnorePath, JSON.stringify(kvIgnoreContent, null, 2));
+  console.log('已创建 cloudflare-config/kv-ignore.json');
+  
+  // 创建或更新 pages-config.json
+  const pagesConfigPath = path.join(configDir, 'pages-config.json');
+  const pagesConfigContent = {
+    name: "getchinesename",
+    build: {
+      baseDir: ".next",
+      command: "npm run cloudflare-build",
+      publicPath: "",
+      ignoredFiles: ["node_modules/.cache/**", ".next/cache/**"]
+    },
+    deployment: {
+      routes: [
+        { pattern: "/*", script: "index.js" }
+      ],
+      kv: {
+        ASSETS: {
+          binding: "ASSETS"
+        }
+      }
+    },
+    env: {
+      NODE_VERSION: "18",
+      NEXT_TELEMETRY_DISABLED: "1",
+      NEXT_RUNTIME: "edge"
+    },
+    limits: {
+      kv_max_entry_size: "24MiB"
+    },
+    build_config: {
+      upload_config: {
+        max_file_size: 25000000,
+        chunk_size: 10000000,
+        max_chunks: 100
+      },
+      optimization: {
+        minify_js: true,
+        minify_css: true,
+        minify_html: true,
+        treeshake: true
+      }
+    }
+  };
+  
+  fs.writeFileSync(pagesConfigPath, JSON.stringify(pagesConfigContent, null, 2));
+  console.log('已创建 cloudflare-config/pages-config.json');
+  
+  // 创建或更新 workers-site/index.js
+  const workerIndexPath = path.join(workersDir, 'index.js');
+  const workerIndexContent = `import { getAssetFromKV, mapRequestToAsset } from '@cloudflare/kv-asset-handler'
+
+/**
+ * The DEBUG flag will do two things that help during development:
+ * 1. we will skip caching on the edge, which makes it easier to
+ *    debug.
+ * 2. we will return an error message on exception in your Response rather
+ *    than the default 404.html page.
+ */
+const DEBUG = false
+
+/**
+ * Cloudflare Pages优化配置
+ */
+addEventListener('fetch', event => {
+  try {
+    event.respondWith(handleEvent(event))
+  } catch (e) {
+    if (DEBUG) {
+      return event.respondWith(
+        new Response(e.message || e.toString(), {
+          status: 500,
+        }),
+      )
+    }
+    event.respondWith(new Response('Internal Error', { status: 500 }))
+  }
+})
+
+async function handleEvent(event) {
+  const url = new URL(event.request.url)
+  let options = {}
+
+  /**
+   * 为了提高性能，我们禁用缓存在开发环境中，
+   * 但在生产环境中启用缓存
+   */
+  if (DEBUG) {
+    options.cacheControl = {
+      bypassCache: true,
+    }
+  } else {
+    options.cacheControl = {
+      browserTTL: 60 * 60 * 24, // 24小时
+      edgeTTL: 60 * 60 * 24 * 7, // 7天
+      bypassCache: false,
+    }
+  }
+
+  try {
+    // 首先尝试从KV存储中获取资产
+    const page = await getAssetFromKV(event, options)
+
+    // 允许设置自定义缓存控制和其他响应头
+    const response = new Response(page.body, page)
+
+    response.headers.set('X-XSS-Protection', '1; mode=block')
+    response.headers.set('X-Content-Type-Options', 'nosniff')
+    response.headers.set('X-Frame-Options', 'DENY')
+    response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin')
+
+    // 对于HTML页面，我们添加安全头部
+    if (response.headers.get('content-type') && response.headers.get('content-type').includes('text/html')) {
+      response.headers.set('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:;")
+    }
+
+    return response
+  } catch (e) {
+    // 如果是404错误，尝试提供自定义404页面
+    if (e.status === 404) {
+      // 处理Next.js客户端路由的所有路径，返回index.html
+      if (url.pathname.startsWith('/')) {
+        try {
+          // 返回主页，让客户端路由处理
+          const notFoundResponse = await getAssetFromKV(event, {
+            mapRequestToAsset: req => new Request(\`\${new URL(req.url).origin}/index.html\`, req),
+          })
+          
+          return new Response(notFoundResponse.body, {
+            ...notFoundResponse,
+            status: 200, // 返回200而不是404，让客户端路由处理
+          })
+        } catch (e) {
+          // 如果主页也不可用，返回默认404
+        }
+      }
+    }
+
+    return new Response(e.message || e.toString(), { status: e.status || 500 })
+  }
+}`;
+  
+  fs.writeFileSync(workerIndexPath, workerIndexContent);
+  console.log('已创建 cloudflare-config/workers-site/index.js');
+}
+
 // 主函数
 async function main() {
   try {
@@ -287,7 +464,8 @@ async function main() {
     updateStore();
     fixReactFiles();
     forceUpdateLayout();
-    updateNextConfig(); // 添加这行来控制文件大小
+    updateNextConfig(); // 控制文件大小
+    createCloudflareConfig(); // 添加这行来创建 Cloudflare 配置
     
     // 执行部署.js脚本
     console.log('执行deploy.js...');

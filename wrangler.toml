@@ -7,6 +7,9 @@ workers_dev = true
 [site]
 bucket = ".next"
 
+# 使用非隐藏的cloudflare-config目录
+config_dir = "cloudflare-config"
+
 # 在Cloudflare Pages配置中设置文件排除
 # 不要在wrangler.toml中使用site.upload和cache字段
 

@@ -145,3 +145,22 @@ npm run cloudflare-build
 ## 许可
 
 MIT
+
+## Cloudflare Pages 部署
+
+本项目使用 `cloudflare-config` 目录存储 Cloudflare Pages 的配置文件，避免使用隐藏目录无法上传到 GitHub 的问题。
+
+### 配置文件说明
+
+- `cloudflare-config/pages-config.json`: Cloudflare Pages 主配置
+- `cloudflare-config/kv-ignore.json`: 忽略的大型缓存文件配置
+- `cloudflare-config/workers-site/index.js`: Cloudflare Workers 脚本
+
+### 部署命令
+
+```bash
+# 使用 Cloudflare Pages 部署
+npm run deploy:cf
+```
+
+部署命令会自动使用 `cloudflare-config` 目录中的配置文件。

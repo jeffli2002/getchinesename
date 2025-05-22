@@ -131,10 +131,18 @@ if [ -f "src/store/index.ts" ]; then
   echo "删除了src/store/index.ts"
 fi
 
+# 确保cloudflare-config目录存在
+echo "检查cloudflare-config目录..."
+if [ ! -d "cloudflare-config" ]; then
+  mkdir -p cloudflare-config
+  mkdir -p cloudflare-config/workers-site
+  echo "创建cloudflare-config目录结构"
+fi
+
 # 创建Cloudflare特定配置
 echo "创建Cloudflare Pages配置文件..."
-mkdir -p .cloudflare
-cat > .cloudflare/kv-ignore.json << EOF
+mkdir -p cloudflare-config
+cat > cloudflare-config/kv-ignore.json << EOF
 {
   "ignorePatterns": [
     ".next/cache/**/*",
@@ -148,7 +156,7 @@ cat > .cloudflare/kv-ignore.json << EOF
 }
 EOF
 
-cat > .cloudflare/pages-config.json << EOF
+cat > cloudflare-config/pages-config.json << EOF
 {
   "name": "getchinesename",
   "build": {
