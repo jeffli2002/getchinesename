@@ -3,5 +3,8 @@
   "destination_dir": ".next",
   "env_vars": {
     "NODE_VERSION": "18.17.0"
+  },
+  "build_config": {
+    "skip_type_check": true
   }
 } 

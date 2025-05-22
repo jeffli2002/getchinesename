@@ -1,6 +1,7 @@
 name = "chinese-name-generator"
 compatibility_date = "2025-05-22"
 compatibility_flags = ["nodejs_compat"]
+main = "workers-site/index.js"
 
 [build]
 command = "npm run build"
@@ -9,7 +10,4 @@ command = "npm run build"
 bucket = ".next"
 
 [env.production]
-workers_dev = true
-
-# 添加入口点
-main = "workers-site/index.js" 
+workers_dev = true 
