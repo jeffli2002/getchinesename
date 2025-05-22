@@ -461,32 +461,31 @@ const generateName = (
   gender: 'male' | 'female',
   originalName: string
 ): GeneratedName => {
-  const givenName = nameChar2 ? `${nameChar1}${nameChar2}` : nameChar1;
-  const fullName = `${surname.char}${givenName}`;
-  const pinyin = nameChar2 
-    ? `${surname.pinyin} ${getPinyin(nameChar1)} ${getPinyin(nameChar2)}`
-    : `${surname.pinyin} ${getPinyin(nameChar1)}`;
+  // 构建完整的中文名
+  const fullName = nameChar2 
+    ? `${surname.char}${nameChar1}${nameChar2}` 
+    : `${surname.char}${nameChar1}`;
   
-  // 生成名字意义解释
+  // 构建拼音（带声调）
+  const pinyin = `${surname.pinyin} ${getPinyin(nameChar1)}${nameChar2 ? ' ' + getPinyin(nameChar2) : ''}`;
+  
+  // 获取名字含义
   const givenNameMeaning = generateNameMeaning(nameChar1, nameChar2, wuXingElement, profession, gender, originalName);
   
-  // 生成名字关联信息
-  const nameRelation = {
-    phoneticSimilarity: generateNameRelation(surname, givenName, originalName, 'en').phoneticSimilarity,
-    meaningConnection: generateNameRelation(surname, givenName, originalName, 'en').meaningConnection,
-    culturalContext: generateNameRelation(surname, givenName, originalName, 'en').culturalContext
-  };
+  // 获取名字与原名的关系
+  const givenName = nameChar2 ? `${nameChar1}${nameChar2}` : nameChar1;
+  const nameRelation = generateNameRelation(surname, givenName, originalName);
   
   return {
     fullName,
     surname: surname.char,
-    givenName,
+    givenName: nameChar2 ? `${nameChar1}${nameChar2}` : nameChar1,
     pinyin,
     surnameMeaning: surname.meaning,
     givenNameMeaning,
     calligraphy: {
-      kai: '',  // 这部分将在书法生成中填充
-      xing: ''
+      kai: fullName,  // 楷书样式，使用完整名字
+      xing: fullName  // 行书样式，使用完整名字
     },
     pronunciation: '',  // 这部分将在发音生成中填充
     originalName,  // 添加原始名字以便在UI中显示

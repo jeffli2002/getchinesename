@@ -252,13 +252,12 @@ const NameGenerator: React.FC = () => {
     originalName: '',
     gender: 'male'
   });
-  const [activeTab, setActiveTab] = useState<'kai' | 'xing'>('kai');
-  const [hoveredSection, setHoveredSection] = useState<string | null>(null);
   const [shareStatus, setShareStatus] = useState<Record<number, { copied: boolean }>>({});
+  const [hoveredSection, setHoveredSection] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'kai' | 'xing'>('kai'); // 默认显示楷书
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setInput(prev => ({ ...prev, [name]: value }));
+    setInput({ ...input, [e.target.name]: e.target.value });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -266,26 +265,22 @@ const NameGenerator: React.FC = () => {
     await generate(input);
   };
 
-  // 使用静态显示方式渲染汉字
-  const renderStaticCharacter = (character: string, style: 'kai' | 'xing') => {
+  // 显示不同字体样式的汉字
+  const renderChineseCharacter = (character: string) => {
     return (
-      <div className={`relative h-full w-full border rounded-md overflow-hidden bg-gray-50 flex items-center justify-center ${style === 'xing' ? 'font-xing-container' : ''}`}>
+      <div className="relative h-full w-full border rounded-md overflow-hidden bg-gray-50 flex items-center justify-center">
         <div className="text-center p-4">
-          <div 
-            className={`text-5xl ${style === 'kai' ? 'font-kai font-bold' : 'font-xing'}`}
-            style={style === 'xing' ? { 
-              fontStyle: 'normal', 
-              fontWeight: 'normal',
-              fontSize: '3.5rem', // 增大行书字号
-              letterSpacing: '6px',
-              textShadow: '0 1px 2px rgba(0,0,0,0.1)'
-            } : undefined}
-          >
-            {character}
-          </div>
-          <div className="text-gray-500 text-xs mt-2">
-            {style === 'kai' ? '楷书' : '王羲之行书'}
-          </div>
+          {activeTab === 'kai' ? (
+            <div className="font-kai text-6xl font-bold">
+              {character}
+            </div>
+          ) : (
+            <div className="font-xing-container overflow-x-auto whitespace-nowrap">
+              <div className="font-xing text-7xl inline-block" style={{letterSpacing: "0.1em"}}>
+                {character}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     );
@@ -413,21 +408,6 @@ const NameGenerator: React.FC = () => {
                 {language === 'en' ? 'Your Chinese Names' : 'Vos Noms Chinois'}
               </h3>
               
-              <div className="flex border-b mb-6">
-                <button
-                  className={`py-2 px-4 font-medium text-sm ${activeTab === 'kai' ? 'border-b-2 border-indigo-500 text-indigo-600' : 'text-gray-500 hover:text-gray-700'} transition-colors duration-300`}
-                  onClick={() => setActiveTab('kai')}
-                >
-                  {language === 'en' ? 'Regular Script' : 'Écriture Régulière'}
-                </button>
-                <button
-                  className={`ml-8 py-2 px-4 font-medium text-sm ${activeTab === 'xing' ? 'border-b-2 border-indigo-500 text-indigo-600' : 'text-gray-500 hover:text-gray-700'} transition-colors duration-300`}
-                  onClick={() => setActiveTab('xing')}
-                >
-                  {language === 'en' ? 'Running Script' : 'Écriture Cursive'}
-                </button>
-              </div>
-              
               <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
                 {names.map((name, index) => (
                   <motion.div
@@ -460,9 +440,32 @@ const NameGenerator: React.FC = () => {
                       </div>
                       
                       <div className="mt-4">
-                        {/* 只显示完整名字 */}
-                        <div className="h-40 bg-gray-50 rounded-md p-2 hover:bg-gray-100 transition-colors duration-300">
-                          {renderStaticCharacter(name.fullName, activeTab)}
+                        {/* 字体样式选项卡 */}
+                        <div className="flex border-b mb-2">
+                          <button
+                            className={`py-2 px-4 font-medium text-sm transition-all duration-300 ${
+                              activeTab === 'kai' 
+                                ? 'border-b-2 border-indigo-500 text-indigo-600' 
+                                : 'text-gray-500 hover:text-gray-700'
+                            }`}
+                            onClick={() => setActiveTab('kai')}
+                          >
+                            {language === 'en' ? 'Regular Script' : 'Style Régulier'}
+                          </button>
+                          <button
+                            className={`py-2 px-4 font-medium text-sm transition-all duration-300 ${
+                              activeTab === 'xing' 
+                                ? 'border-b-2 border-indigo-500 text-indigo-600' 
+                                : 'text-gray-500 hover:text-gray-700'
+                            }`}
+                            onClick={() => setActiveTab('xing')}
+                          >
+                            {language === 'en' ? 'Running Script' : 'Style Cursif'}
+                          </button>
+                        </div>
+                        
+                        <div className="h-48 bg-gray-50 rounded-md p-4 hover:bg-gray-100 transition-colors duration-300">
+                          {renderChineseCharacter(name.calligraphy[activeTab])}
                         </div>
                       </div>
                       

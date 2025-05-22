@@ -1,7 +1,21 @@
-import { useLanguageStore } from '@/store';
+import { useLanguageStore } from '@/store/index.js';
 import { motion } from 'framer-motion';
 import Image from 'next/image';
-import { Testimonial } from '@/types';
+
+type Language = 'en' | 'fr';
+
+interface TestimonialContent {
+  en: string;
+  fr: string;
+}
+
+interface Testimonial {
+  id: number;
+  name: string;
+  role: TestimonialContent;
+  content: TestimonialContent;
+  image: string;
+}
 
 const testimonials: Testimonial[] = [
   {
@@ -12,8 +26,8 @@ const testimonials: Testimonial[] = [
       fr: 'Ingénieure Logicielle'
     },
     content: {
-      en: 'The name generator provided me with a beautiful Chinese name that perfectly matches my personality. The calligraphy animation is mesmerizing!',
-      fr: 'Le générateur de noms m\'a fourni un beau nom chinois qui correspond parfaitement à ma personnalité. L\'animation calligraphique est envoûtante !'
+      en: 'The name generator provided me with a beautiful Chinese name that perfectly matches my personality. The Chinese character display is elegant and meaningful!',
+      fr: 'Le générateur de noms m\'a fourni un beau nom chinois qui correspond parfaitement à ma personnalité. L\'affichage des caractères chinois est élégant et significatif !'
     },
     image: '/testimonials/sarah.jpg'
   },
@@ -47,16 +61,17 @@ const testimonials: Testimonial[] = [
 
 const Testimonials = () => {
   const { language } = useLanguageStore();
+  const currentLanguage = (language || 'en') as Language;
 
   return (
     <section id="testimonials" className="py-12 bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center">
           <h2 className="text-3xl font-extrabold text-gray-900 sm:text-4xl">
-            {language === 'en' ? 'What Our Users Say' : 'Ce que disent nos utilisateurs'}
+            {currentLanguage === 'en' ? 'What Our Users Say' : 'Ce que disent nos utilisateurs'}
           </h2>
           <p className="mt-4 text-lg text-gray-500">
-            {language === 'en'
+            {currentLanguage === 'en'
               ? 'Join thousands of satisfied users who found their perfect Chinese name'
               : 'Rejoignez des milliers d\'utilisateurs satisfaits qui ont trouvé leur nom chinois parfait'}
           </p>
@@ -85,12 +100,12 @@ const Testimonials = () => {
                         {testimonial.name}
                       </h3>
                       <p className="text-gray-500">
-                        {testimonial.role[language]}
+                        {testimonial.role[currentLanguage]}
                       </p>
                     </div>
                   </div>
                   <p className="mt-4 text-gray-500">
-                    {testimonial.content[language]}
+                    {testimonial.content[currentLanguage]}
                   </p>
                 </div>
               </motion.div>

@@ -1,11 +1,14 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { useLanguageStore } from '@/store';
+import { useLanguageStore } from '@/store/index.js';
 import { FiMenu, FiX } from 'react-icons/fi';
+
+type Language = 'en' | 'fr';
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const { language, setLanguage } = useLanguageStore();
+  const currentLanguage = (language || 'en') as Language;
 
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen);
@@ -24,25 +27,25 @@ const Header = () => {
           {/* 桌面导航 */}
           <div className="hidden sm:ml-6 sm:flex sm:items-center sm:space-x-8">
             <Link href="/" className="text-indigo-600 hover:text-indigo-800 font-medium">
-              {language === 'en' ? 'Home' : 'Accueil'}
+              {currentLanguage === 'en' ? 'Home' : 'Accueil'}
             </Link>
             <Link href="#features" className="text-gray-600 hover:text-indigo-700 transition-colors duration-200">
-              {language === 'en' ? 'Features' : 'Fonctionnalités'}
+              {currentLanguage === 'en' ? 'Features' : 'Fonctionnalités'}
             </Link>
             <Link href="#how-it-works" className="text-gray-600 hover:text-indigo-700 transition-colors duration-200">
-              {language === 'en' ? 'How It Works' : 'Comment ça marche'}
+              {currentLanguage === 'en' ? 'How It Works' : 'Comment ça marche'}
             </Link>
             <Link href="#testimonials" className="text-gray-600 hover:text-indigo-700 transition-colors duration-200">
-              {language === 'en' ? 'Testimonials' : 'Témoignages'}
+              {currentLanguage === 'en' ? 'Testimonials' : 'Témoignages'}
             </Link>
             <Link href="#faq" className="text-gray-600 hover:text-indigo-700 transition-colors duration-200">
-              {language === 'en' ? 'FAQ' : 'FAQ'}
+              {currentLanguage === 'en' ? 'FAQ' : 'FAQ'}
             </Link>
             <button
-              onClick={() => setLanguage(language === 'en' ? 'fr' : 'en')}
+              onClick={() => setLanguage(currentLanguage === 'en' ? 'fr' : 'en')}
               className="ml-4 px-3 py-1 rounded-md bg-indigo-100 text-indigo-700 hover:bg-indigo-200 transition-colors duration-200"
             >
-              {language === 'en' ? 'FR' : 'EN'}
+              {currentLanguage === 'en' ? 'FR' : 'EN'}
             </button>
           </div>
 
@@ -71,44 +74,44 @@ const Header = () => {
               className="block px-3 py-2 rounded-md text-base font-medium text-indigo-700 bg-indigo-50"
               onClick={() => setIsMenuOpen(false)}
             >
-              {language === 'en' ? 'Home' : 'Accueil'}
+              {currentLanguage === 'en' ? 'Home' : 'Accueil'}
             </Link>
             <Link
               href="#features"
               className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-indigo-700 hover:bg-indigo-50"
               onClick={() => setIsMenuOpen(false)}
             >
-              {language === 'en' ? 'Features' : 'Fonctionnalités'}
+              {currentLanguage === 'en' ? 'Features' : 'Fonctionnalités'}
             </Link>
             <Link
               href="#how-it-works"
               className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-indigo-700 hover:bg-indigo-50"
               onClick={() => setIsMenuOpen(false)}
             >
-              {language === 'en' ? 'How It Works' : 'Comment ça marche'}
+              {currentLanguage === 'en' ? 'How It Works' : 'Comment ça marche'}
             </Link>
             <Link
               href="#testimonials"
               className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-indigo-700 hover:bg-indigo-50"
               onClick={() => setIsMenuOpen(false)}
             >
-              {language === 'en' ? 'Testimonials' : 'Témoignages'}
+              {currentLanguage === 'en' ? 'Testimonials' : 'Témoignages'}
             </Link>
             <Link
               href="#faq"
               className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-indigo-700 hover:bg-indigo-50"
               onClick={() => setIsMenuOpen(false)}
             >
-              {language === 'en' ? 'FAQ' : 'FAQ'}
+              {currentLanguage === 'en' ? 'FAQ' : 'FAQ'}
             </Link>
             <button
               onClick={() => {
-                setLanguage(language === 'en' ? 'fr' : 'en');
+                setLanguage(currentLanguage === 'en' ? 'fr' : 'en');
                 setIsMenuOpen(false);
               }}
               className="w-full text-left block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-indigo-700 hover:bg-indigo-50"
             >
-              {language === 'en' ? 'Français' : 'English'}
+              {currentLanguage === 'en' ? 'Français' : 'English'}
             </button>
           </div>
         </div>

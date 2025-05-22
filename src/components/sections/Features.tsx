@@ -1,7 +1,23 @@
-import { useLanguageStore } from '@/store';
+import React from 'react';
+import { useLanguageStore } from '@/store/index.js';
 import { motion } from 'framer-motion';
+import { GiQuill } from 'react-icons/gi';
 
-const features = [
+type Language = 'en' | 'fr';
+
+interface FeatureContent {
+  en: string;
+  fr: string;
+}
+
+interface Feature {
+  id?: number;
+  title: FeatureContent;
+  description: FeatureContent;
+  icon: React.ReactNode;
+}
+
+const features: Feature[] = [
   {
     title: {
       en: 'Cultural Integration',
@@ -25,15 +41,16 @@ const features = [
     icon: '✨'
   },
   {
+    id: 3,
+    icon: <GiQuill className="h-6 w-6 text-indigo-500" />,
     title: {
-      en: 'Calligraphy Animation',
-      fr: 'Animation Calligraphique'
+      en: 'Chinese Typography',
+      fr: 'Typographie Chinoise',
     },
     description: {
-      en: 'Watch your name being written in beautiful Chinese calligraphy.',
-      fr: 'Regardez votre nom s\'écrire en belle calligraphie chinoise.'
+      en: 'View your name in elegant Chinese typography with proper character display.',
+      fr: 'Visualisez votre nom en typographie chinoise élégante avec un affichage correct des caractères.',
     },
-    icon: '🖌️'
   },
   {
     title: {
@@ -72,16 +89,17 @@ const features = [
 
 const Features = () => {
   const { language } = useLanguageStore();
+  const currentLanguage = (language || 'en') as Language;
 
   return (
     <section id="features" className="py-12 bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center">
           <h2 className="text-3xl font-extrabold text-gray-900 sm:text-4xl">
-            {language === 'en' ? 'Features' : 'Fonctionnalités'}
+            {currentLanguage === 'en' ? 'Features' : 'Fonctionnalités'}
           </h2>
           <p className="mt-4 text-lg text-gray-500">
-            {language === 'en'
+            {currentLanguage === 'en'
               ? 'Discover the unique features of our Chinese name generator'
               : 'Découvrez les fonctionnalités uniques de notre générateur de noms chinois'}
           </p>
@@ -99,10 +117,10 @@ const Features = () => {
               >
                 <div className="text-4xl mb-4">{feature.icon}</div>
                 <h3 className="text-lg font-medium text-gray-900">
-                  {feature.title[language]}
+                  {feature.title[currentLanguage]}
                 </h3>
                 <p className="mt-2 text-gray-500">
-                  {feature.description[language]}
+                  {feature.description[currentLanguage]}
                 </p>
               </motion.div>
             ))}

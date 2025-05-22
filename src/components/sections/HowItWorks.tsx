@@ -1,4 +1,4 @@
-import { useLanguageStore } from '@/store';
+import { useLanguageStore } from '@/store/index.js';
 import { motion } from 'framer-motion';
 
 // 定义语言类型
@@ -41,8 +41,8 @@ const steps: StepItem[] = [
       fr: 'Voir les Résultats'
     },
     description: {
-      en: 'Get three unique name options with detailed explanations and calligraphy.',
-      fr: 'Obtenez trois options de noms uniques avec des explications détaillées et de la calligraphie.'
+      en: 'Get three unique name options with detailed explanations and proper Chinese character display.',
+      fr: 'Obtenez trois options de noms uniques avec des explications détaillées et un affichage correct des caractères chinois.',
     },
     icon: '🎯'
   },

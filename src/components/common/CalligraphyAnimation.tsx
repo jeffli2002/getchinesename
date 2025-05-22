@@ -1,6 +1,11 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Stroke } from '@/utils/calligraphy';
+// 创建本地Stroke接口代替导入
+interface Stroke {
+  path: string;
+  duration: number;
+  delay: number;
+}
 import Script from 'next/script';
 
 interface CalligraphyAnimationProps {

@@ -1,4 +1,4 @@
-import { useLanguageStore } from '@/store';
+import { useLanguageStore } from '@/store/index.js';
 
 const Footer = () => {
   const { language } = useLanguageStore();

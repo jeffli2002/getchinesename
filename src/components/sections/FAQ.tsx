@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useLanguageStore } from '@/store';
+import { useLanguageStore } from '@/store/index.js';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FAQ as FAQType } from '@/types';
 

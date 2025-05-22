@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import React, { createContext } from 'react';
+import React from 'react';
 
 // 创建语言状态存储
 export const useLanguageStore = create((set) => ({
@@ -8,7 +8,7 @@ export const useLanguageStore = create((set) => ({
 }));
 
 // 创建语言上下文
-const LanguageContext = createContext(null);
+export const LanguageContext = React.createContext(null);
 
 // 语言提供者组件
 export const LanguageProvider = ({ children }) => {
