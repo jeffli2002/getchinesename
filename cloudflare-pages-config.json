@@ -1,0 +1,7 @@
+{
+  "build_command": "npm run build",
+  "destination_dir": ".next",
+  "env_vars": {
+    "NODE_VERSION": "18.17.0"
+  }
+} 
