@@ -10,6 +10,10 @@ bucket = ".next"
 # 使用非隐藏的cloudflare-config目录
 config_dir = "cloudflare-config"
 
+# 禁用.pack文件上传
+[site.upload]
+exclude = ["**/*.pack", "**/*.pack.gz", ".next/cache/**/*"]
+
 # 在Cloudflare Pages配置中设置文件排除
 # 不要在wrangler.toml中使用site.upload和cache字段
 
@@ -32,14 +36,19 @@ routes = [
 binding = "ASSETS"
 id = "assets-namespace-id"
 
-# 禁用webpack缓存持久化
+# 完全禁用webpack缓存持久化
 [build.upload]
 format = "service-worker"
+dir = ".next"
+include = ["**/*"]
+exclude = ["**/*.pack", "**/*.pack.gz", ".next/cache/**/*"]
 
 # Pages配置
 [build.pages]
 directory = ".next"
 minify = true
+include = ["**/*"]
+exclude = ["**/*.pack", "**/*.pack.gz", ".next/cache/**/*"]
 
 # 允许较大的KV条目 (不超过25MB限制)
 [limits]

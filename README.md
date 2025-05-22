@@ -82,72 +82,6 @@ npm run build
 
 ### Cloudflare Pages 部署
 
-本项目已针对Cloudflare Pages进行了特殊优化，解决了React导入、TypeScript相关问题以及文件大小限制问题。
-
-#### 部署方法
-
-1. **本地构建并手动上传**:
-   ```bash
-   npm run cloudflare-build
-   ```
-   然后将`.next`目录上传到Cloudflare Pages。
-
-2. **Cloudflare Pages自动部署**:
-   
-   在Cloudflare Pages的构建设置中，配置以下内容：
-   - 构建命令: `npm run cloudflare-build`
-   - 输出目录: `.next`
-   - 框架预设: `Next.js`
-   - Node版本: `18` 或更高
-
-   确保添加以下环境变量:
-   - `NODE_VERSION`: `18`
-   - `NEXT_TELEMETRY_DISABLED`: `1`
-
-#### 解决文件大小限制问题
-
-Cloudflare Pages对文件大小有25MB的限制，本项目通过以下方式解决此问题：
-
-1. **优化webpack配置**：修改了Next.js的webpack配置，调整代码分块策略，确保生成的文件不超过限制。
-
-2. **禁用缓存持久化**：禁用webpack的持久缓存，避免生成过大的缓存文件。
-
-3. **构建后清理**：在构建完成后自动清理`.next/cache/webpack`目录，移除可能超出大小限制的文件。
-
-4. **文件分块优化**：将大型依赖项如React库和其他node_modules分成更小的块。
-
-如果仍然遇到文件大小问题，可以尝试：
-```bash
-# 清理构建和缓存
-npm run prebuild
-
-# 使用优化过的构建脚本
-npm run cloudflare-build
-```
-
-#### 常见问题解决
-
-如果在Cloudflare Pages构建中遇到其他问题：
-
-1. **React相关错误**：如`Cannot find namespace 'React'`，确保使用`cloudflare-build.js`脚本构建。
-
-2. **KV存储限制错误**：如果出现`File is too big, it should be under 25 MiB`，确保删除了webpack缓存文件：
-   ```bash
-   rm -rf .next/cache/webpack
-   ```
-
-3. **部署失败**：检查构建日志中的具体错误，并确保wrangler.toml中的配置正确。
-
-## 贡献
-
-欢迎通过PR和Issue提供贡献。
-
-## 许可
-
-MIT
-
-## Cloudflare Pages 部署
-
 本项目使用 `cloudflare-config` 目录存储 Cloudflare Pages 的配置文件，避免使用隐藏目录无法上传到 GitHub 的问题。
 
 ### 配置文件说明
@@ -156,11 +90,65 @@ MIT
 - `cloudflare-config/kv-ignore.json`: 忽略的大型缓存文件配置
 - `cloudflare-config/workers-site/index.js`: Cloudflare Workers 脚本
 
+### 文件大小限制问题解决方案
+
+Cloudflare Pages 有 25MB 的文件大小限制，项目已经通过以下方式解决：
+
+1. **优化构建配置**：
+   - 禁用 webpack 缓存持久化（避免生成大型 .pack 文件）
+   - 优化代码分块策略，将大型依赖分成更小的块
+   - 移除源代码映射（source maps）以减小构建输出
+
+2. **特殊部署步骤**：
+   - 使用 `cloudflare-deploy.js` 脚本处理部署前的准备工作
+   - 自动删除超过大小限制的 webpack 缓存文件
+   - 使用 `.cfignore` 和 `cfignore.txt` 确保大型文件不会被上传
+
+3. **项目结构优化**：
+   - 分离 React 相关库和大型依赖
+   - 优化图像和资源加载
+   - 提高代码压缩级别
+
 ### 部署命令
 
 ```bash
+# 标准部署（构建并部署到 Cloudflare Pages）
+npm run deploy
+
+# 只执行部署准备步骤（不执行实际部署）
+npm run cloudflare-deploy
+
 # 使用 Cloudflare Pages 部署
 npm run deploy:cf
 ```
 
-部署命令会自动使用 `cloudflare-config` 目录中的配置文件。
+### 部署故障排除
+
+如果遇到 `File is too big, it should be under 25 MiB` 错误：
+
+1. 确保运行了正确的部署命令：
+   ```bash
+   npm run cloudflare-deploy
+   ```
+
+2. 检查是否生成了大型 .pack 文件：
+   ```bash
+   find .next -name "*.pack" -size +20M
+   ```
+   
+3. 如有必要，手动删除大型文件：
+   ```bash
+   rm -rf .next/cache/webpack
+   ```
+
+4. 确保 `.cfignore` 文件正确配置且没有编码问题
+
+5. 如果上述方法都无效，可以尝试手动上传构建后的文件，排除大型文件
+
+## 贡献
+
+欢迎通过PR和Issue提供贡献。
+
+## 许可
+
+MIT

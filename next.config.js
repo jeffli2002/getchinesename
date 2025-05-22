@@ -31,10 +31,8 @@ const nextConfig = {
       );
     }
 
-    // 禁用持久缓存，避免大文件问题
-    if (isCloudflare) {
-      config.cache = false;
-    }
+    // 强制禁用缓存，避免大文件问题
+    config.cache = false;
 
     // 限制模块大小 - 针对Cloudflare的25MB限制调整
     if (isProd) {
@@ -42,8 +40,8 @@ const nextConfig = {
         chunks: 'all',
         maxInitialRequests: 30,
         maxAsyncRequests: 30,
-        minSize: 10000,
-        maxSize: 20000000, // 20MB - 低于Cloudflare的25MB限制
+        minSize: 5000,
+        maxSize: 15000000, // 15MB - 远低于Cloudflare的25MB限制
         cacheGroups: {
           vendors: false, // 禁用默认的vendor分组
           framework: {
@@ -53,11 +51,32 @@ const nextConfig = {
             chunks: 'all',
             enforce: true,
           },
+          // 进一步细分React相关库
+          reactDom: {
+            name: 'react-dom',
+            test: /[\\/]node_modules[\\/]react-dom[\\/]/,
+            priority: 39,
+            chunks: 'all',
+          },
+          // 分割大型图标库
+          icons: {
+            name: 'icons',
+            test: /[\\/]node_modules[\\/]react-icons[\\/]/,
+            priority: 38,
+            chunks: 'all',
+          },
+          // 分割动画库
+          framerMotion: {
+            name: 'framer-motion',
+            test: /[\\/]node_modules[\\/]framer-motion[\\/]/,
+            priority: 37,
+            chunks: 'all',
+          },
           lib: {
             test: /[\\/]node_modules[\\/]/,
             priority: 30,
             minChunks: 2,
-            maxSize: 20000000, // 20MB
+            maxSize: 15000000, // 15MB
             chunks: 'all',
           },
           components: {
@@ -80,9 +99,26 @@ const nextConfig = {
       // 强制分割大型模块
       config.plugins.push(
         new webpack.optimize.LimitChunkCountPlugin({
-          maxChunks: 50, // 增加分块数量，减小每个块的大小
+          maxChunks: 100, // 显著增加分块数量，减小每个块的大小
         })
       );
+      
+      // 提高代码压缩级别，减小文件大小
+      if (config.optimization.minimizer) {
+        config.optimization.minimizer.forEach(minimizer => {
+          if (minimizer.constructor.name === 'TerserPlugin') {
+            minimizer.options.terserOptions = {
+              ...minimizer.options.terserOptions,
+              compress: {
+                ...minimizer.options.terserOptions?.compress,
+                passes: 2,
+                drop_console: true,
+                pure_funcs: ['console.log', 'console.info', 'console.debug'],
+              },
+            };
+          }
+        });
+      }
     }
 
     // 安全处理模块上下文
@@ -119,6 +155,9 @@ const nextConfig = {
     // 添加source-map以便调试
     if (!isProd) {
       config.devtool = 'eval-source-map';
+    } else {
+      // 生产环境禁用source map，减少文件大小
+      config.devtool = false;
     }
 
     // 分析构建大小（可选）

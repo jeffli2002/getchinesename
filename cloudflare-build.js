@@ -491,6 +491,40 @@ async function main() {
       console.log('已清理webpack缓存文件');
     }
     
+    // 添加：强制清理所有缓存文件，尤其是大型pack文件
+    console.log('强制删除所有大型缓存文件...');
+    // 明确删除client-production和server-production中的pack文件
+    const clientProductionDir = path.join(process.cwd(), '.next/cache/webpack/client-production');
+    const serverProductionDir = path.join(process.cwd(), '.next/cache/webpack/server-production');
+    
+    if (fs.existsSync(clientProductionDir)) {
+      fs.readdirSync(clientProductionDir).forEach(file => {
+        if (file.endsWith('.pack') || file.endsWith('.pack.gz')) {
+          const filePath = path.join(clientProductionDir, file);
+          try {
+            fs.unlinkSync(filePath);
+            console.log(`已删除: ${filePath}`);
+          } catch (err) {
+            console.error(`删除文件失败: ${filePath}`, err);
+          }
+        }
+      });
+    }
+    
+    if (fs.existsSync(serverProductionDir)) {
+      fs.readdirSync(serverProductionDir).forEach(file => {
+        if (file.endsWith('.pack') || file.endsWith('.pack.gz')) {
+          const filePath = path.join(serverProductionDir, file);
+          try {
+            fs.unlinkSync(filePath);
+            console.log(`已删除: ${filePath}`);
+          } catch (err) {
+            console.error(`删除文件失败: ${filePath}`, err);
+          }
+        }
+      });
+    }
+    
     console.log('✅ 构建完成!');
   } catch (error) {
     console.error('❌ 构建失败:', error);
