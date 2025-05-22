@@ -3,6 +3,24 @@ const fs = require('fs');
 const path = require('path');
 const { rimraf } = require('rimraf');
 
+// 创建babel.config.js文件
+function createBabelConfig() {
+  const babelConfigPath = path.join(process.cwd(), 'babel.config.js');
+  
+  const babelConfigContent = `module.exports = {
+  presets: [
+    ['next/babel', {
+      'preset-react': {
+        runtime: 'automatic',
+      },
+    }],
+  ],
+};`;
+  
+  fs.writeFileSync(babelConfigPath, babelConfigContent);
+  console.log('创建/更新了babel.config.js');
+}
+
 // 创建404.js API处理程序
 function create404Handler() {
   const apiDir = path.join(process.cwd(), 'src', 'pages', 'api');
@@ -84,6 +102,44 @@ function createTsConfig() {
   }
 }
 
+// 创建store/index.js文件
+function createStoreIndexJs() {
+  const storeDir = path.join(process.cwd(), 'src', 'store');
+  const storeIndexJsPath = path.join(storeDir, 'index.js');
+  
+  if (!fs.existsSync(storeDir)) {
+    fs.mkdirSync(storeDir, { recursive: true });
+  }
+  
+  // 创建新的store/index.js文件内容
+  const storeIndexJsContent = `import { create } from 'zustand';
+import React from 'react';
+
+// 创建语言状态存储
+export const useLanguageStore = create((set) => ({
+  language: 'en', // 默认语言为英文
+  setLanguage: (lang) => set({ language: lang }),
+}));
+
+// 创建语言上下文
+export const LanguageContext = React.createContext(null);
+
+// 语言提供者组件
+export const LanguageProvider = ({ children }) => {
+  const store = useLanguageStore();
+
+  return (
+    <LanguageContext.Provider value={store}>
+      {children}
+    </LanguageContext.Provider>
+  );
+};`;
+  
+  // 写入文件
+  fs.writeFileSync(storeIndexJsPath, storeIndexJsContent);
+  console.log('创建/更新了store/index.js');
+}
+
 // 删除可能引起问题的文件
 function deleteProblematicFiles() {
   const storeIndexPath = path.join(process.cwd(), 'src', 'store', 'index.ts');
@@ -120,6 +176,8 @@ function main() {
     createJsConfig();
     createTsConfig();
     create404Handler();
+    createStoreIndexJs();
+    createBabelConfig();
     
     console.log('部署准备完成');
   } catch (error) {

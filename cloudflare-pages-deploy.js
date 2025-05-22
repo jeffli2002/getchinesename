@@ -12,39 +12,38 @@ try {
   process.env.NEXT_TELEMETRY_DISABLED = '1';
   process.env.NODE_OPTIONS = '--max-old-space-size=3072';
   
-  // 只在非Windows环境下尝试删除node_modules
-  const isWindows = process.platform === 'win32';
+  // 确保src/store目录存在并创建index.js
+  console.log('创建store/index.js...');
+  const storeDir = path.join(process.cwd(), 'src/store');
+  if (!fs.existsSync(storeDir)) {
+    fs.mkdirSync(storeDir, { recursive: true });
+  }
   
-  if (!isWindows) {
-    // 清理旧依赖
-    console.log('清理旧依赖...');
-    if (fs.existsSync('node_modules')) {
-      rimraf.sync('node_modules');
-    }
-    if (fs.existsSync('package-lock.json')) {
-      fs.unlinkSync('package-lock.json');
-    }
+  const storeIndexContent = `import { create } from 'zustand';
+import React from 'react';
 
-    // 安装依赖
-    console.log('安装依赖...');
-    execSync('npm install --no-fund --no-audit', { stdio: 'inherit' });
-  } else {
-    console.log('Windows环境检测，跳过删除node_modules...');
-    
-    // 在Windows上只更新package-lock.json
-    if (fs.existsSync('package-lock.json')) {
-      console.log('更新依赖...');
-      execSync('npm install --no-fund --no-audit', { stdio: 'inherit' });
-    }
-  }
+// 创建语言状态存储
+export const useLanguageStore = create((set) => ({
+  language: 'en', // 默认语言为英文
+  setLanguage: (lang) => set({ language: lang }),
+}));
 
-  // 确保workers-site目录存在
-  const workersSiteDir = path.join(process.cwd(), 'workers-site');
-  if (!fs.existsSync(workersSiteDir)) {
-    fs.mkdirSync(workersSiteDir, { recursive: true });
-    console.log('创建workers-site目录');
-  }
+// 创建语言上下文
+export const LanguageContext = React.createContext(null);
 
+// 语言提供者组件
+export const LanguageProvider = ({ children }) => {
+  const store = useLanguageStore();
+
+  return (
+    <LanguageContext.Provider value={store}>
+      {children}
+    </LanguageContext.Provider>
+  );
+};`;
+  
+  fs.writeFileSync(path.join(storeDir, 'index.js'), storeIndexContent);
+  
   // 创建jsconfig.json
   console.log('创建src/jsconfig.json...');
   const srcDir = path.join(process.cwd(), 'src');
@@ -52,25 +51,21 @@ try {
     fs.mkdirSync(srcDir, { recursive: true });
   }
   
-  const jsconfigContent = {
-    compilerOptions: {
-      baseUrl: '.',
-      paths: {
-        '@/*': ['./*']
-      }
+  const jsConfigContent = `{
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./*"]
     }
-  };
+  }
+}`;
   
-  fs.writeFileSync(
-    path.join(srcDir, 'jsconfig.json'), 
-    JSON.stringify(jsconfigContent, null, 2)
-  );
-
+  fs.writeFileSync(path.join(srcDir, 'jsconfig.json'), jsConfigContent);
+  
   // 确保babel.config.js存在
   console.log('检查babel.config.js...');
   const babelConfigPath = path.join(process.cwd(), 'babel.config.js');
-  if (!fs.existsSync(babelConfigPath)) {
-    const babelConfigContent = `module.exports = {
+  const babelConfigContent = `module.exports = {
   presets: [
     [
       'next/babel',
@@ -82,58 +77,49 @@ try {
     ],
   ],
 };`;
-    
-    fs.writeFileSync(babelConfigPath, babelConfigContent);
-    console.log('创建babel.config.js');
-  }
-
+  
+  fs.writeFileSync(babelConfigPath, babelConfigContent);
+  console.log('创建了babel.config.js');
+  
+  // 修复React组件导入 - Windows方式
+  console.log('修复React组件导入...');
+  const fixReactImports = (filePath) => {
+    if (fs.existsSync(filePath)) {
+      let content = fs.readFileSync(filePath, 'utf8');
+      
+      // 修复导入
+      content = content.replace(/import React from ['"]react['"];/g, 'import React, { ReactNode } from \'react\';');
+      content = content.replace(/React\.ReactNode/g, 'ReactNode');
+      
+      fs.writeFileSync(filePath, content);
+    }
+  };
+  
+  // 检查并修复Layout.tsx
+  const layoutPath = path.join(process.cwd(), 'src/components/layout/Layout.tsx');
+  fixReactImports(layoutPath);
+  
+  // 检查并修复其他可能有问题的文件
+  const filesToCheck = [
+    'src/components/common/PronunciationButton.tsx',
+    'src/components/sections/NameGenerator.tsx',
+    'src/components/sections/Features.tsx'
+  ];
+  
+  filesToCheck.forEach(file => {
+    const filePath = path.join(process.cwd(), file);
+    fixReactImports(filePath);
+  });
+  
   // 运行deploy.js
   console.log('执行部署准备脚本...');
-  require('./deploy.js');
-
-  // 清理.next缓存目录
-  console.log('清理.next/cache目录...');
-  const nextCachePath = path.join(process.cwd(), '.next/cache');
-  if (fs.existsSync(nextCachePath)) {
-    rimraf.sync(nextCachePath);
-  }
-
-  // Windows环境中使用特定的命令
-  if (isWindows) {
-    console.log('Windows环境构建应用...');
-    execSync('npm run build', { 
-      stdio: 'inherit',
-      env: { 
-        ...process.env, 
-        NEXT_TELEMETRY_DISABLED: '1',
-        NODE_OPTIONS: '--max-old-space-size=3072'
-      } 
-    });
-  } else {
-    // 构建应用
-    console.log('构建应用...');
-    execSync('NEXT_TELEMETRY_DISABLED=1 NODE_OPTIONS="--max-old-space-size=3072" npm run build', { stdio: 'inherit' });
-  }
-
-  // 构建完成后复制必要的文件
-  console.log('复制必要文件到.next目录...');
-  const nextDir = path.join(process.cwd(), '.next');
+  execSync('node deploy.js', { stdio: 'inherit' });
   
-  const filesToCopy = ['_routes.json', '_headers', '_redirects'];
+  // 构建项目
+  console.log('构建项目...');
+  execSync('npm run build', { stdio: 'inherit' });
   
-  filesToCopy.forEach(file => {
-    const sourcePath = path.join(process.cwd(), file);
-    if (fs.existsSync(sourcePath)) {
-      fs.copyFileSync(sourcePath, path.join(nextDir, file));
-      console.log(`复制了${file}`);
-    }
-  });
-
-  // 确保typescript模块可用
-  console.log('确保TypeScript模块可用...');
-  execSync('npm install --no-save typescript @types/node @types/react', { stdio: 'inherit' });
-
-  console.log('部署准备完成');
+  console.log('部署脚本完成!');
 } catch (error) {
   console.error('部署过程中出错:', error);
   process.exit(1);

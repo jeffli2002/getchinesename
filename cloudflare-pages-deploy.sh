@@ -20,6 +20,34 @@ if [ ! -d "workers-site" ]; then
   echo "创建workers-site目录"
 fi
 
+# 确保src/store目录存在并创建index.js
+echo "创建store/index.js..."
+mkdir -p src/store
+cat > src/store/index.js << EOF
+import { create } from 'zustand';
+import React from 'react';
+
+// 创建语言状态存储
+export const useLanguageStore = create((set) => ({
+  language: 'en', // 默认语言为英文
+  setLanguage: (lang) => set({ language: lang }),
+}));
+
+// 创建语言上下文
+export const LanguageContext = React.createContext(null);
+
+// 语言提供者组件
+export const LanguageProvider = ({ children }) => {
+  const store = useLanguageStore();
+
+  return (
+    <LanguageContext.Provider value={store}>
+      {children}
+    </LanguageContext.Provider>
+  );
+};
+EOF
+
 # 创建jsconfig.json
 echo "创建src/jsconfig.json..."
 mkdir -p src
@@ -36,8 +64,7 @@ EOF
 
 # 确保babel.config.js存在
 echo "检查babel.config.js..."
-if [ ! -f "babel.config.js" ]; then
-  cat > babel.config.js << EOF
+cat > babel.config.js << EOF
 module.exports = {
   presets: [
     [
@@ -51,40 +78,15 @@ module.exports = {
   ],
 };
 EOF
-  echo "创建babel.config.js"
-fi
+echo "创建了babel.config.js"
 
-# 运行deploy.js
-echo "执行部署准备脚本..."
-node deploy.js
+# 检查并修复每个React组件的导入
+echo "修复React组件导入..."
+find src -name "*.tsx" -exec sed -i 's/import React from "react";/import React, { ReactNode } from "react";/g' {} \;
+find src -name "*.tsx" -exec sed -i 's/React\.ReactNode/ReactNode/g' {} \;
 
-# 清理.next缓存目录
-echo "清理.next/cache目录..."
-rm -rf .next/cache
+# 构建项目
+echo "构建项目..."
+npm run build
 
-# 构建应用
-echo "构建应用..."
-NEXT_TELEMETRY_DISABLED=1 NODE_OPTIONS="--max-old-space-size=3072" npm run build
-
-# 构建完成后复制必要的文件
-echo "复制必要文件到.next目录..."
-if [ -f "_routes.json" ]; then
-  cp _routes.json .next/
-  echo "复制了_routes.json"
-fi
-
-if [ -f "_headers" ]; then
-  cp _headers .next/
-  echo "复制了_headers"
-fi
-
-if [ -f "_redirects" ]; then
-  cp _redirects .next/
-  echo "复制了_redirects"
-fi
-
-# 确保typescript模块可用
-echo "确保TypeScript模块可用..."
-npm install --no-save typescript @types/node @types/react
-
-echo "部署准备完成" 
+echo "部署脚本完成!" 
