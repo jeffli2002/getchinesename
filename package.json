@@ -8,6 +8,8 @@
     "dev:alt2": "next dev -p 3002",
     "dev:alt3": "next dev -p 3003",
     "build": "next build",
+    "prebuild": "echo 'Preparing build environment for Cloudflare Pages...'",
+    "cloudflare:build": "next build",
     "start": "next start",
     "start:alt": "next start -p 3001",
     "export": "next build && next export",
@@ -21,6 +23,7 @@
     "test:e2e:home": "playwright test e2e/home.spec.ts"
   },
   "dependencies": {
+    "@cloudflare/kv-asset-handler": "^0.4.0",
     "@headlessui/react": "^1.7.17",
     "@heroicons/react": "^2.0.18",
     "framer-motion": "^10.16.4",

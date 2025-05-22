@@ -8,6 +8,14 @@ const nextConfig = {
   images: {
     domains: ['localhost'],
   },
+  webpack: (config) => {
+    // 配置路径别名
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      '@': require('path').resolve(__dirname, 'src'),
+    };
+    return config;
+  },
   async rewrites() {
     return [
       // API路由重写可以添加在这里

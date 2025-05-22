@@ -11,5 +11,5 @@ bucket = ".next"
 [env.production]
 workers_dev = true
 
-[build.upload]
-format = "service-worker" 
+# 添加入口点
+main = "workers-site/index.js" 
