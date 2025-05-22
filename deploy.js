@@ -1,7 +1,7 @@
 // 部署辅助脚本
 const fs = require('fs');
 const path = require('path');
-const rimraf = require('rimraf');
+const { rimraf } = require('rimraf');
 
 // 清理缓存文件夹
 try {
