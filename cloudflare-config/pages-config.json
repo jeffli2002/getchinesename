@@ -2,9 +2,17 @@
   "name": "getchinesename",
   "build": {
     "baseDir": ".next",
-    "command": "npm run cloudflare-build",
+    "command": "node cloudflare-pages-build.js",
     "publicPath": "",
-    "ignoredFiles": ["node_modules/.cache/**", ".next/cache/**"]
+    "ignoredFiles": [
+      "node_modules/.cache/**", 
+      ".next/cache/**", 
+      "**/*.pack", 
+      "**/*.pack.gz", 
+      ".next/cache/webpack/**/*",
+      ".next/cache/webpack/client-production/*",
+      ".next/cache/webpack/server-production/*"
+    ]
   },
   "deployment": {
     "routes": [
@@ -19,22 +27,34 @@
   "env": {
     "NODE_VERSION": "18",
     "NEXT_TELEMETRY_DISABLED": "1",
-    "NEXT_RUNTIME": "edge"
+    "NEXT_RUNTIME": "edge",
+    "CLOUDFLARE_PAGES": "1"
   },
   "limits": {
     "kv_max_entry_size": "24MiB"
   },
   "build_config": {
     "upload_config": {
-      "max_file_size": 25000000,
-      "chunk_size": 10000000,
-      "max_chunks": 100
+      "formats": ["service-worker"],
+      "dir": ".next",
+      "include": ["**/*"],
+      "exclude": [
+        "**/*.pack",
+        "**/*.pack.gz",
+        ".next/cache/**/*",
+        ".next/cache/webpack/**/*",
+        ".next/cache/webpack/client-production/*",
+        ".next/cache/webpack/server-production/*"
+      ]
     },
     "optimization": {
       "minify_js": true,
       "minify_css": true,
       "minify_html": true,
       "treeshake": true
-    }
-  }
+    },
+    "skip_build_cache": true
+  },
+  "compatibility_flags": ["nodejs_compat"],
+  "compatibility_date": "2023-09-01"
 } 
