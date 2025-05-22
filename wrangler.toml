@@ -1,4 +1,4 @@
-name = "chinese-name-generator"
+name = "getchinesename"
 main = ".next/server.js"
 compatibility_date = "2023-09-01"
 compatibility_flags = ["nodejs_compat"]
@@ -10,15 +10,22 @@ bucket = ".next"
 # 使用非隐藏的cloudflare-config目录
 config_dir = "cloudflare-config"
 
-# 禁用.pack文件上传
+# 禁用.pack文件上传 - 关键配置
 [site.upload]
-exclude = ["**/*.pack", "**/*.pack.gz", ".next/cache/**/*"]
+exclude = [
+  "**/*.pack", 
+  "**/*.pack.gz", 
+  ".next/cache/**/*",
+  ".next/cache/webpack/**/*",
+  ".next/cache/webpack/client-production/*",
+  ".next/cache/webpack/server-production/*"
+]
 
 # 在Cloudflare Pages配置中设置文件排除
 # 不要在wrangler.toml中使用site.upload和cache字段
 
 [build]
-command = "npm run cloudflare-build"
+command = "node cloudflare-deploy.js"
 watch_dir = "src"
 upload.format = "service-worker"
 
@@ -41,14 +48,28 @@ id = "assets-namespace-id"
 format = "service-worker"
 dir = ".next"
 include = ["**/*"]
-exclude = ["**/*.pack", "**/*.pack.gz", ".next/cache/**/*"]
+exclude = [
+  "**/*.pack", 
+  "**/*.pack.gz", 
+  ".next/cache/**/*",
+  ".next/cache/webpack/**/*",
+  ".next/cache/webpack/client-production/*",
+  ".next/cache/webpack/server-production/*"
+]
 
 # Pages配置
 [build.pages]
 directory = ".next"
 minify = true
 include = ["**/*"]
-exclude = ["**/*.pack", "**/*.pack.gz", ".next/cache/**/*"]
+exclude = [
+  "**/*.pack", 
+  "**/*.pack.gz", 
+  ".next/cache/**/*",
+  ".next/cache/webpack/**/*",
+  ".next/cache/webpack/client-production/*",
+  ".next/cache/webpack/server-production/*"
+]
 
 # 允许较大的KV条目 (不超过25MB限制)
 [limits]
@@ -56,6 +77,10 @@ kv_max_entry_size = "24MiB"
 
 [placement]
 mode = "smart"
+
+# 禁用缓存
+[cache]
+enabled = false
 
 [env.staging]
 name = "chinese-name-generator-staging"

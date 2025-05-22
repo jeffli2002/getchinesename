@@ -33,169 +33,92 @@ const nextConfig = {
 
     // 强制禁用缓存，避免大文件问题
     config.cache = false;
-
-    // 限制模块大小 - 针对Cloudflare的25MB限制调整
-    if (isProd) {
-      config.optimization.splitChunks = {
-        chunks: 'all',
-        maxInitialRequests: 30,
-        maxAsyncRequests: 30,
-        minSize: 5000,
-        maxSize: 15000000, // 15MB - 远低于Cloudflare的25MB限制
-        cacheGroups: {
-          vendors: false, // 禁用默认的vendor分组
-          framework: {
-            name: 'framework',
-            test: /[\\/]node_modules[\\/](react|react-dom|scheduler|prop-types|next)[\\/]/,
-            priority: 40,
-            chunks: 'all',
-            enforce: true,
+    
+    // 优化分块策略，减小文件大小
+    config.optimization.splitChunks = {
+      chunks: 'all',
+      maxInitialRequests: Infinity,
+      minSize: 20000,
+      maxSize: 20 * 1024 * 1024, // 20MB，低于Cloudflare的25MB限制
+      cacheGroups: {
+        vendor: {
+          test: /[\\/]node_modules[\\/]/,
+          name(module) {
+            // 得到 node_modules/packageName/sub/path 中的 packageName
+            const packageName = module.context.match(/[\\/]node_modules[\\/](.*?)([\\/]|$)/)[1];
+            // 避免不符合规范的包名
+            return `npm.${packageName.replace('@', '')}`;
           },
-          // 进一步细分React相关库
-          reactDom: {
-            name: 'react-dom',
-            test: /[\\/]node_modules[\\/]react-dom[\\/]/,
-            priority: 39,
-            chunks: 'all',
-          },
-          // 分割大型图标库
-          icons: {
-            name: 'icons',
-            test: /[\\/]node_modules[\\/]react-icons[\\/]/,
-            priority: 38,
-            chunks: 'all',
-          },
-          // 分割动画库
-          framerMotion: {
-            name: 'framer-motion',
-            test: /[\\/]node_modules[\\/]framer-motion[\\/]/,
-            priority: 37,
-            chunks: 'all',
-          },
-          lib: {
-            test: /[\\/]node_modules[\\/]/,
-            priority: 30,
-            minChunks: 2,
-            maxSize: 15000000, // 15MB
-            chunks: 'all',
-          },
-          components: {
-            name: 'components',
-            test: /[\\/]src[\\/]components[\\/]/,
-            minChunks: 2,
-            priority: 20,
-            chunks: 'all',
-          },
-          utils: {
-            name: 'utils',
-            test: /[\\/]src[\\/]utils[\\/]/,
-            minChunks: 2,
-            priority: 10,
-            chunks: 'all',
-          },
+          priority: 10,
         },
-      };
-
-      // 强制分割大型模块
-      config.plugins.push(
-        new webpack.optimize.LimitChunkCountPlugin({
-          maxChunks: 100, // 显著增加分块数量，减小每个块的大小
-        })
-      );
-      
-      // 提高代码压缩级别，减小文件大小
-      if (config.optimization.minimizer) {
-        config.optimization.minimizer.forEach(minimizer => {
-          if (minimizer.constructor.name === 'TerserPlugin') {
-            minimizer.options.terserOptions = {
-              ...minimizer.options.terserOptions,
-              compress: {
-                ...minimizer.options.terserOptions?.compress,
-                passes: 2,
-                drop_console: true,
-                pure_funcs: ['console.log', 'console.info', 'console.debug'],
-              },
-            };
-          }
-        });
-      }
-    }
-
-    // 安全处理模块上下文
-    config.module.parser = {
-      ...config.module.parser,
-      javascript: {
-        ...config.module.parser?.javascript,
-        exportsPresence: 'error',
-        importExportsPresence: false,
+        commons: {
+          minChunks: 2,
+          priority: 5,
+          reuseExistingChunk: true,
+        },
+        styles: {
+          name: 'styles',
+          test: /\.css$/,
+          chunks: 'all',
+          enforce: true,
+        },
       },
     };
-
-    // 添加对.tsx文件的明确处理
+    
+    // 减小生成文件的大小，禁用不必要的功能
     if (isProd) {
-      config.module.rules.push({
-        test: /\.tsx?$/,
-        use: [
-          {
-            loader: 'babel-loader',
-            options: {
-              presets: [
-                '@babel/preset-env',
-                '@babel/preset-react',
-                '@babel/preset-typescript'
-              ],
-              plugins: []
-            }
-          }
-        ],
-        exclude: /node_modules/
-      });
-    }
-
-    // 添加source-map以便调试
-    if (!isProd) {
-      config.devtool = 'eval-source-map';
-    } else {
-      // 生产环境禁用source map，减少文件大小
-      config.devtool = false;
-    }
-
-    // 分析构建大小（可选）
-    if (process.env.ANALYZE === 'true') {
-      const { BundleAnalyzerPlugin } = require('webpack-bundle-analyzer');
-      config.plugins.push(
-        new BundleAnalyzerPlugin({
-          analyzerMode: 'server',
-          analyzerPort: 8888,
-          openAnalyzer: true,
-        })
+      // 禁用热更新代码
+      config.plugins = config.plugins.filter(
+        (plugin) => plugin.constructor.name !== 'HotModuleReplacementPlugin'
       );
+      
+      // 禁用source maps
+      config.devtool = false;
+      
+      // 禁用模块保留
+      if (config.optimization) {
+        config.optimization.moduleIds = 'named';
+        
+        // 优化缩小选项
+        if (!config.optimization.minimizer) {
+          config.optimization.minimizer = [];
+        }
+      }
     }
-
+    
+    // 专门针对Cloudflare Pages的优化
+    if (isCloudflare || process.env.CLOUDFLARE_PAGES) {
+      // 禁用webpack缓存
+      config.output.pathinfo = false;
+      
+      // 设置更保守的分块大小
+      if (config.optimization) {
+        config.optimization.splitChunks.maxSize = 15 * 1024 * 1024; // 15MB，留有余量
+      }
+      
+      // 完全禁用缓存持久化
+      config.cache = false;
+      
+      // 确保所有缓存文件不会被输出
+      config.output = {
+        ...config.output,
+        path: path.join(__dirname, '.next'),
+        clean: true, // 构建前清理输出目录
+      };
+    }
+    
     return config;
   },
-
-  // 外部模块配置，减小构建大小
-  experimental: {
-    esmExternals: 'loose',
-  },
-
-  // 添加重写规则
-  async rewrites() {
-    return [
-      {
-        source: '/api/:path*',
-        destination: '/api/:path*',
-      },
-    ];
+  
+  // 输出配置
+  output: 'standalone',
+  
+  // 禁用TypeScript检查，加快构建速度
+  typescript: {
+    ignoreBuildErrors: true,
   },
   
-  // 避免一些特定的TypeScript错误
-  typescript: {
-    ignoreBuildErrors: true, // 忽略TypeScript错误
-  },
-
-  // 修正路径别名
+  // 禁用ESLint检查，加快构建速度
   eslint: {
     ignoreDuringBuilds: true,
   },

@@ -84,11 +84,41 @@ npm run build
 
 本项目使用 `cloudflare-config` 目录存储 Cloudflare Pages 的配置文件，避免使用隐藏目录无法上传到 GitHub 的问题。
 
+### 新增部署方法（解决文件大小限制问题）
+
+我们增加了专门的部署脚本来解决 Cloudflare Pages 的 25MB 文件大小限制问题：
+
+1. **使用专用构建脚本**：
+   ```bash
+   node cloudflare-pages-build.js
+   ```
+   此脚本会清理缓存、优化构建、删除大文件，并生成适合 Cloudflare Pages 的输出。
+
+2. **使用部署脚本**：
+   ```bash
+   # Linux/Mac
+   chmod +x cloudflare-pages-deploy.sh
+   ./cloudflare-pages-deploy.sh
+   
+   # Windows (PowerShell)
+   node cloudflare-pages-build.js
+   rimraf .next/cache
+   npx wrangler pages deploy .next --project-name getchinesename
+   ```
+
+3. **使用 package.json 命令**：
+   ```bash
+   npm run deploy:cf
+   ```
+
 ### 配置文件说明
 
 - `cloudflare-config/pages-config.json`: Cloudflare Pages 主配置
 - `cloudflare-config/kv-ignore.json`: 忽略的大型缓存文件配置
 - `cloudflare-config/workers-site/index.js`: Cloudflare Workers 脚本
+- `cloudflare-pages-build.js`: 专用构建脚本，解决大文件问题
+- `cloudflare-deploy.js`: 部署准备脚本
+- `cloudflare-build.js`: 构建优化脚本
 
 ### 文件大小限制问题解决方案
 
@@ -100,7 +130,7 @@ Cloudflare Pages 有 25MB 的文件大小限制，项目已经通过以下方式
    - 移除源代码映射（source maps）以减小构建输出
 
 2. **特殊部署步骤**：
-   - 使用 `cloudflare-deploy.js` 脚本处理部署前的准备工作
+   - 使用 `cloudflare-pages-build.js` 脚本处理部署前的准备工作
    - 自动删除超过大小限制的 webpack 缓存文件
    - 使用 `.cfignore` 和 `cfignore.txt` 确保大型文件不会被上传
 
@@ -120,6 +150,9 @@ npm run cloudflare-deploy
 
 # 使用 Cloudflare Pages 部署
 npm run deploy:cf
+
+# 仅执行构建步骤
+node cloudflare-pages-build.js
 ```
 
 ### 部署故障排除

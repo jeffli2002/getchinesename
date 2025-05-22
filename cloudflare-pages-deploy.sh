@@ -207,4 +207,29 @@ node cloudflare-build.js
 echo "清理webpack缓存文件..."
 rm -rf .next/cache/webpack
 
-echo "部署脚本完成!" 
+# Cloudflare Pages 部署脚本
+
+# 清理旧的构建
+echo "清理旧的构建..."
+rm -rf .next
+
+# 运行定制的构建脚本
+echo "执行 Cloudflare Pages 专用构建..."
+node cloudflare-pages-build.js
+
+# 确保缓存目录已删除
+echo "确保缓存目录已删除..."
+rm -rf .next/cache
+rm -rf .next/cache/webpack
+rm -rf .next/cache/webpack/client-production
+rm -rf .next/cache/webpack/server-production
+
+# 查找大文件并删除
+echo "查找并删除大文件..."
+find .next -type f -size +20M -exec rm -f {} \;
+
+# 部署到 Cloudflare Pages
+echo "部署到 Cloudflare Pages..."
+npx wrangler pages deploy .next --project-name getchinesename
+
+echo "部署完成!" 
