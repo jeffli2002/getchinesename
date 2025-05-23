@@ -49,4 +49,11 @@ yarn-error.log*
 .vscode/
 
 # Cloudflare相关临时文件
-.cloudflare/ 
+.cloudflare/
+
+# Cloudflare配置
+.cfignore
+.cfignore.backup
+
+# 允许cfignore.txt文件
+!cfignore.txt 
