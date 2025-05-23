@@ -9,13 +9,15 @@ const isCloudflarePages = process.env.CF_PAGES === '1';
 // 检查是否是Cloudflare部署
 const isCloudflare = isCloudflarePages || process.env.NEXT_RUNTIME === 'edge';
 
+// 检测是否是部署构建
+const isBuildForDeploy = isProd || isCloudflare || process.env.NEXT_DISABLE_CACHE === '1';
+
 const nextConfig = {
   reactStrictMode: true,
   swcMinify: true,
   images: {
     unoptimized: true,
     domains: ['images.unsplash.com'],
-    disableStaticImages: true,
   },
   
   // 配置路径别名
@@ -23,43 +25,94 @@ const nextConfig = {
     // 彻底禁用webpack缓存，避免生成大型.pack文件
     config.cache = false;
     
-    // 启用压缩和分块策略
+    // 确保watchOptions存在并正确设置ignored
+    if (!config.watchOptions) {
+      config.watchOptions = {};
+    }
+    
+    // 正确设置watchOptions.ignored为数组
+    config.watchOptions.ignored = [
+      '**/.git/**',
+      '**/node_modules/**',
+      '**/.next/cache/**'
+    ];
+    
+    // 控制文件大小 - 降低拆分阈值
     if (!dev) {
-      config.optimization.minimize = true;
+      // 配置性能提示
+      config.performance = {
+        hints: false,
+        maxEntrypointSize: 512000,
+        maxAssetSize: 512000
+      };
       
-      // 强制禁用持久化缓存
+      // 优化拆分策略 - 确保文件小于Cloudflare的限制
       if (config.optimization) {
-        // 使用更确定性的模块ID算法
+        // 使用确定性的模块ID算法
         config.optimization.moduleIds = 'named';
         
-        // 使用更确定性的chunk ID算法
+        // 使用确定性的chunk ID算法
         config.optimization.chunkIds = 'named';
         
-        // 禁用资产大小提示
-        config.performance = {
-          hints: false,
-          maxEntrypointSize: 512000,
-          maxAssetSize: 512000
-        };
-        
-        // 将第三方库拆分为单独的块
+        // 拆分chunks策略 - 确保文件小于10MB
         config.optimization.splitChunks = {
+          chunks: 'all',
+          maxInitialRequests: Infinity,
+          minSize: 20000,
+          maxSize: 10000000, // 最大10MB的块
           cacheGroups: {
-            commons: {
+            vendor: {
               test: /[\\/]node_modules[\\/]/,
-              name: 'vendors',
+              name(module) {
+                // 获取npm包名称
+                if (!module.context) return 'vendor';
+                
+                const packageNameMatch = module.context.match(/[\\/]node_modules[\\/](.*?)([\\/]|$)/);
+                if (!packageNameMatch) return 'vendor';
+                
+                const packageName = packageNameMatch[1];
+                // 为每个包创建单独的chunk
+                return `npm.${packageName.replace('@', '')}`;
+              },
+              priority: 20,
+              reuseExistingChunk: true,
+              maxSize: 5000000, // 5MB
+            },
+            default: {
+              minChunks: 2,
+              priority: 10,
+              reuseExistingChunk: true,
+              maxSize: 5000000, // 5MB
+            },
+            styles: {
+              name: 'styles',
+              test: /\.css$/,
               chunks: 'all',
-              maxSize: 1024 * 1024 * 5, // 最大5MB
-              enforce: true
+              enforce: true,
             }
           }
         };
-      }
-      
-      // 避免动态链接库
-      if (config.plugins) {
-        const dlls = config.plugins.filter((plugin) => plugin.constructor.name === 'DllReferencePlugin');
-        config.plugins = config.plugins.filter((plugin) => plugin.constructor.name !== 'DllReferencePlugin');
+        
+        // 最小化设置
+        config.optimization.minimize = true;
+        if (config.optimization.minimizer) {
+          for (const minimizer of config.optimization.minimizer) {
+            if (minimizer.constructor.name === 'TerserPlugin') {
+              minimizer.options.terserOptions = {
+                ...minimizer.options.terserOptions,
+                compress: {
+                  ...minimizer.options.terserOptions?.compress,
+                  reduce_vars: true,
+                  pure_funcs: ['console.debug', 'console.log']
+                },
+                output: {
+                  ...minimizer.options.terserOptions?.output,
+                  comments: false
+                }
+              };
+            }
+          }
+        }
       }
     }
     
@@ -69,15 +122,24 @@ const nextConfig = {
       '@': path.join(__dirname, 'src'),
     };
     
+    // 添加环境变量
+    config.plugins.push(
+      new webpack.DefinePlugin({
+        'process.env.NEXT_DISABLE_CACHE': JSON.stringify('1'),
+        'process.env.CLOUDFLARE_DEPLOYMENT': JSON.stringify(
+          isCloudflare ? 'true' : 'false'
+        ),
+      })
+    );
+    
     return config;
   },
   
   // 修改构建参数
   experimental: {
-    // 禁用静态图像，避免大文件问题
-    // 注意: 此配置在Next.js 13+中不再需要，已移至images配置
+    // 设置优化参数
     forceSwcTransforms: true,
-    optimizeCss: true,
+    optimizeCss: false, // 禁用CSS优化以避免critters的问题
     optimizeServerReact: true,
     scrollRestoration: true,
   },
@@ -111,6 +173,13 @@ const nextConfig = {
       '/404': { page: '/404' },
     };
   },
+  
+  // 禁用更多缓存和优化文件大小的设置
+  generateBuildId: async () => {
+    return `build-${Date.now()}`;
+  },
+  poweredByHeader: false,
+  compress: true,
 };
 
 module.exports = nextConfig; 
