@@ -36,7 +36,11 @@
     "test:e2e:faq": "playwright test e2e/faq.spec.ts",
     "test:e2e:home": "playwright test e2e/home.spec.ts",
     "clean": "rimraf .next node_modules/.cache",
-    "clean:all": "rimraf .next node_modules"
+    "clean:all": "rimraf .next node_modules",
+    "fix-imports": "node fix-imports.js",
+    "clean-build": "node clean-build.js",
+    "auto-fix": "node fix-imports.js && node clean-build.js",
+    "deploy:auto-fix": "npm run auto-fix && npm run cf:nopack"
   },
   "dependencies": {
     "@cloudflare/kv-asset-handler": "^0.4.0",
@@ -73,6 +77,7 @@
     "cross-env": "^7.0.3",
     "eslint": "8.50.0",
     "eslint-config-next": "13.5.4",
+    "glob": "^11.0.2",
     "jest": "^29.7.0",
     "jest-environment-jsdom": "^29.7.0",
     "postcss": "8.4.31",

@@ -25,17 +25,14 @@ const nextConfig = {
     // 彻底禁用webpack缓存，避免生成大型.pack文件
     config.cache = false;
     
-    // 确保watchOptions存在并正确设置ignored
-    if (!config.watchOptions) {
-      config.watchOptions = {};
-    }
-    
-    // 正确设置watchOptions.ignored为数组
-    config.watchOptions.ignored = [
-      '**/.git/**',
-      '**/node_modules/**',
-      '**/.next/cache/**'
-    ];
+    // 正确设置watchOptions
+    config.watchOptions = {
+      ignored: [
+        '**/node_modules/**',
+        '**/.git/**',
+        '**/.next/cache/**'
+      ]
+    };
     
     // 控制文件大小 - 降低拆分阈值
     if (!dev) {
