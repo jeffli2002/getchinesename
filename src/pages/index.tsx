@@ -1,3 +1,4 @@
+import React, { ReactNode } from 'react';
 import Head from 'next/head';
 import Hero from '@/components/sections/Hero';
 import Features from '@/components/sections/Features';

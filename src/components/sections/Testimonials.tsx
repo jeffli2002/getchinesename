@@ -1,3 +1,4 @@
+import React, { ReactNode } from 'react';
 import { useLanguageStore } from '@/store/index.js';
 import { motion } from 'framer-motion';
 import Image from 'next/image';

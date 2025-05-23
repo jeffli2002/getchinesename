@@ -1,3 +1,4 @@
+import React, { ReactNode } from 'react';
 import { useLanguageStore } from '@/store/index.js';
 
 const Footer = () => {

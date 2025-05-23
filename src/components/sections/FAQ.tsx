@@ -1,3 +1,4 @@
+import React, { ReactNode } from 'react';
 import { useState } from 'react';
 import { useLanguageStore } from '@/store/index.js';
 import { motion, AnimatePresence } from 'framer-motion';

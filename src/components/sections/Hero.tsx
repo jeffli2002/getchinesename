@@ -1,3 +1,4 @@
+import React, { ReactNode } from 'react';
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useLanguageStore } from '@/store/index.js';

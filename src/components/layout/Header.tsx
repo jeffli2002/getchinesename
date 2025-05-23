@@ -1,3 +1,4 @@
+import React, { ReactNode } from 'react';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useLanguageStore } from '@/store/index.js';
