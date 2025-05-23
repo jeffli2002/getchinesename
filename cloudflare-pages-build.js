@@ -5,23 +5,74 @@ const { execSync } = require('child_process');
 const { rimraf } = require('rimraf');
 
 console.log('===== Cloudflare Pages 专用构建脚本 =====');
+console.log('当前目录:', process.cwd());
 
-// 清理缓存和构建目录
+// 设置环境变量，确保禁用缓存
+process.env.NEXT_TELEMETRY_DISABLED = '1';
+process.env.NODE_ENV = 'production';
+process.env.NEXT_DISABLE_CACHE = '1';
+process.env.MINIMIZE_ASSETS = 'true';
+
+// 彻底清理缓存和构建目录
 function cleanDirectories() {
-  console.log('清理缓存和构建目录...');
+  console.log('彻底清理缓存和构建目录...');
   
+  // 彻底删除.next目录，确保完全清理所有缓存
   const dirsToClean = [
     '.next',
+    '.next/cache',
+    '.next/cache/webpack',
+    '.next/cache/webpack/client-production',
+    '.next/cache/webpack/server-production',
     'node_modules/.cache',
   ];
   
   dirsToClean.forEach(dir => {
     const dirPath = path.join(process.cwd(), dir);
     if (fs.existsSync(dirPath)) {
-      rimraf.sync(dirPath);
-      console.log(`已清理: ${dir}`);
+      try {
+        console.log(`尝试删除: ${dir}`);
+        rimraf.sync(dirPath, { force: true });
+        console.log(`已清理: ${dir}`);
+      } catch (err) {
+        console.error(`清理 ${dir} 失败:`, err);
+        // 尝试使用系统命令强制删除
+        try {
+          if (process.platform === 'win32') {
+            execSync(`rmdir /s /q "${dirPath}"`, { stdio: 'inherit' });
+          } else {
+            execSync(`rm -rf "${dirPath}"`, { stdio: 'inherit' });
+          }
+          console.log(`使用系统命令成功清理: ${dir}`);
+        } catch (cmdErr) {
+          console.error(`即使使用系统命令也无法清理 ${dir}:`, cmdErr);
+        }
+      }
     }
   });
+  
+  // 额外检查并删除可能残留的pack文件
+  findAndDeleteFiles('.next', '*.pack');
+  findAndDeleteFiles('.next', '*.pack.gz');
+}
+
+// 递归查找并删除指定类型的文件
+function findAndDeleteFiles(directory, pattern) {
+  if (!fs.existsSync(directory)) {
+    return;
+  }
+  
+  console.log(`查找并删除 ${directory} 中的 ${pattern} 文件...`);
+  
+  try {
+    if (process.platform === 'win32') {
+      execSync(`del /s /q "${path.join(directory, pattern)}"`, { stdio: 'ignore' });
+    } else {
+      execSync(`find ${directory} -name "${pattern}" -type f -delete`, { stdio: 'ignore' });
+    }
+  } catch (err) {
+    // 忽略错误，继续执行
+  }
 }
 
 // 递归删除文件大小超过指定大小的文件
@@ -34,6 +85,69 @@ function removeLargeFiles(dir, maxSizeMB = 20) {
   }
   
   const maxSizeBytes = maxSizeMB * 1024 * 1024;
+  
+  try {
+    let foundLargeFiles = false;
+    
+    // 在Windows上使用PowerShell查找大文件
+    if (process.platform === 'win32') {
+      const command = `powershell -Command "Get-ChildItem -Path '${dir}' -Recurse -File | Where-Object { $_.Length -gt ${maxSizeBytes} } | ForEach-Object { $_.FullName }"`;
+      try {
+        const output = execSync(command, { encoding: 'utf8' });
+        const files = output.trim().split(/\r?\n/).filter(Boolean);
+        
+        for (const file of files) {
+          console.log(`删除大文件: ${file}`);
+          try {
+            fs.unlinkSync(file);
+            foundLargeFiles = true;
+          } catch (err) {
+            console.error(`删除文件失败: ${file}`, err);
+          }
+        }
+      } catch (err) {
+        // 忽略PowerShell错误，回退到常规方法
+        foundLargeFiles = recursivelyCheckAndDeleteLargeFiles(dir, maxSizeBytes) || foundLargeFiles;
+      }
+    } else {
+      // 在Unix系统上使用find命令
+      try {
+        const command = `find "${dir}" -type f -size +${maxSizeMB}M -print`;
+        const output = execSync(command, { encoding: 'utf8' });
+        const files = output.trim().split(/\r?\n/).filter(Boolean);
+        
+        for (const file of files) {
+          console.log(`删除大文件: ${file}`);
+          try {
+            fs.unlinkSync(file);
+            foundLargeFiles = true;
+          } catch (err) {
+            console.error(`删除文件失败: ${file}`, err);
+          }
+        }
+      } catch (err) {
+        // 忽略find命令错误，回退到常规方法
+        foundLargeFiles = recursivelyCheckAndDeleteLargeFiles(dir, maxSizeBytes) || foundLargeFiles;
+      }
+    }
+    
+    if (!foundLargeFiles) {
+      console.log(`在 ${dir} 中没有发现大于 ${maxSizeMB}MB 的文件`);
+    }
+  } catch (err) {
+    console.error(`检查大文件时出错:`, err);
+    // 回退到常规方法
+    recursivelyCheckAndDeleteLargeFiles(dir, maxSizeBytes);
+  }
+}
+
+// 递归检查并删除大文件的标准方法
+function recursivelyCheckAndDeleteLargeFiles(dir, maxSizeBytes) {
+  if (!fs.existsSync(dir)) {
+    return false;
+  }
+  
+  let foundLargeFiles = false;
   const files = fs.readdirSync(dir);
   
   for (const file of files) {
@@ -43,11 +157,12 @@ function removeLargeFiles(dir, maxSizeMB = 20) {
       const stats = fs.statSync(filePath);
       
       if (stats.isDirectory()) {
-        removeLargeFiles(filePath, maxSizeMB);
+        foundLargeFiles = recursivelyCheckAndDeleteLargeFiles(filePath, maxSizeBytes) || foundLargeFiles;
       } else if (stats.size > maxSizeBytes) {
         console.log(`删除大文件: ${filePath} (${(stats.size / (1024 * 1024)).toFixed(2)}MB)`);
         try {
           fs.unlinkSync(filePath);
+          foundLargeFiles = true;
         } catch (err) {
           console.error(`删除文件失败: ${filePath}`, err);
         }
@@ -56,6 +171,8 @@ function removeLargeFiles(dir, maxSizeMB = 20) {
       console.error(`无法读取文件信息: ${filePath}`, err);
     }
   }
+  
+  return foundLargeFiles;
 }
 
 // 创建或更新store/index.js
@@ -148,6 +265,34 @@ function ensureCfIgnore() {
     console.log('未找到cfignore.txt，将创建默认的.cfignore');
     createDefaultCfIgnore(cfignorePath);
   }
+  
+  // 确保.cfignore文件正确，再次验证
+  if (fs.existsSync(cfignorePath)) {
+    const content = fs.readFileSync(cfignorePath, 'utf8');
+    console.log('.cfignore文件内容长度:', content.length, '字节');
+    
+    // 确保.cfignore包含必要的排除项
+    const requiredPatterns = [
+      "**/*.pack",
+      "**/*.pack.gz",
+      ".next/cache/**/*"
+    ];
+    
+    let contentModified = false;
+    let contentLines = content.split(/\r?\n/);
+    
+    for (const pattern of requiredPatterns) {
+      if (!content.includes(pattern)) {
+        contentLines.push(pattern);
+        contentModified = true;
+      }
+    }
+    
+    if (contentModified) {
+      fs.writeFileSync(cfignorePath, contentLines.join('\n'), 'utf8');
+      console.log('.cfignore文件已添加必要的排除项');
+    }
+  }
 }
 
 // 创建默认的.cfignore内容
@@ -165,6 +310,11 @@ node_modules/
 **/*.pack.gz
 **/*.wasm
 **/.git
+
+# 忽略所有webpack缓存相关文件
+**/*.hot-update.*
+**/.cache
+**/.next/cache/**/*
 
 # 忽略开发文件
 .env.local
@@ -193,7 +343,10 @@ test-results/
 **/*~
 **/*.bak
 **/*.swp
-**/*.swo`;
+**/*.swo
+
+# 限制大文件
+**/*.+(jpg|jpeg|gif|png|ico|mp4|webm|ogg|mp3|wav|pdf|zip|tar|gz|7z|rar) size>10000000`;
   
   try {
     fs.writeFileSync(filePath, defaultContent, 'utf8');
@@ -214,17 +367,18 @@ test-results/
 function buildProject() {
   console.log('开始构建项目...');
   
-  // 设置环境变量
-  process.env.NEXT_TELEMETRY_DISABLED = '1';
-  process.env.NODE_ENV = 'production';
-  process.env.MINIMIZE_ASSETS = 'true'; 
-  
   try {
-    // 使用Next.js构建
-    execSync('npx next build', { 
+    // 使用Next.js构建，传递--no-cache参数禁用缓存
+    const buildCommand = 'npx next build --no-cache';
+    console.log(`执行构建命令: ${buildCommand}`);
+    
+    execSync(buildCommand, { 
       stdio: 'inherit',
       env: {
         ...process.env,
+        NEXT_TELEMETRY_DISABLED: '1',
+        NEXT_DISABLE_CACHE: '1',
+        NODE_OPTIONS: '--max-old-space-size=4096' // 增加Node内存限制
       }
     });
     
@@ -235,137 +389,18 @@ function buildProject() {
   }
 }
 
-// 清理webpack缓存文件
-function cleanWebpackCache() {
-  console.log('彻底清理webpack缓存文件...');
-  
-  // 删除webpack缓存目录
-  const webpackCacheDir = path.join(process.cwd(), '.next/cache/webpack');
-  if (fs.existsSync(webpackCacheDir)) {
-    try {
-      rimraf.sync(webpackCacheDir);
-      console.log('已清理webpack缓存目录');
-    } catch (err) {
-      console.error('清理webpack缓存失败:', err);
-      
-      // 尝试使用命令行工具删除
-      try {
-        if (process.platform === 'win32') {
-          execSync(`rmdir /s /q "${webpackCacheDir}"`);
-        } else {
-          execSync(`rm -rf "${webpackCacheDir}"`);
-        }
-        console.log('通过命令行删除webpack缓存成功');
-      } catch (cmdErr) {
-        console.error('通过命令行删除失败:', cmdErr);
-      }
-    }
-  }
-  
-  // 递归检查.next目录并删除大文件
-  const nextDir = path.join(process.cwd(), '.next');
-  if (fs.existsSync(nextDir)) {
-    // 删除大文件
-    removeLargeFiles(nextDir);
-  }
-  
-  // 创建空的webpack缓存目录结构
-  const clientProductionDir = path.join(process.cwd(), '.next/cache/webpack/client-production');
-  const serverProductionDir = path.join(process.cwd(), '.next/cache/webpack/server-production');
-  
-  fs.mkdirSync(clientProductionDir, { recursive: true });
-  fs.mkdirSync(serverProductionDir, { recursive: true });
-  
-  // 创建占位符文件
-  fs.writeFileSync(path.join(clientProductionDir, '.gitkeep'), '');
-  fs.writeFileSync(path.join(serverProductionDir, '.gitkeep'), '');
-  
-  console.log('已重建webpack缓存目录结构');
-}
-
-// 复制Cloudflare配置
-function copyCloudflareConfig() {
-  console.log('复制Cloudflare配置...');
-  
-  // 确保.cloudflare目录存在
-  const cloudflareDir = path.join(process.cwd(), '.cloudflare');
-  if (!fs.existsSync(cloudflareDir)) {
-    fs.mkdirSync(cloudflareDir, { recursive: true });
-  }
-  
-  // 复制配置文件
-  const configSourceDir = path.join(process.cwd(), 'cloudflare-config');
-  if (fs.existsSync(configSourceDir)) {
-    // 复制kv-ignore.json
-    const kvIgnorePath = path.join(configSourceDir, 'kv-ignore.json');
-    if (fs.existsSync(kvIgnorePath)) {
-      fs.copyFileSync(kvIgnorePath, path.join(cloudflareDir, 'kv-ignore.json'));
-    }
-    
-    // 确保workers-site目录存在
-    const workersDir = path.join(cloudflareDir, 'workers-site');
-    if (!fs.existsSync(workersDir)) {
-      fs.mkdirSync(workersDir, { recursive: true });
-    }
-    
-    // 复制workers-site/index.js
-    const workerIndexPath = path.join(configSourceDir, 'workers-site/index.js');
-    if (fs.existsSync(workerIndexPath)) {
-      fs.copyFileSync(workerIndexPath, path.join(workersDir, 'index.js'));
-    }
-    
-    console.log('Cloudflare配置文件已复制');
-  }
-
-  // 创建.cfconfig文件 - 包含Cloudflare配置的汇总
-  const cfconfigPath = path.join(process.cwd(), '.cfconfig');
-  const cfconfigContent = {
-    name: "getchinesename",
-    config_dir: "cloudflare-config",
-    site: {
-      bucket: ".next",
-      exclude: [
-        "**/*.pack", 
-        "**/*.pack.gz", 
-        ".next/cache/**/*",
-        ".next/cache/webpack/**/*"
-      ]
-    },
-    build: {
-      command: "node cloudflare-pages-build.js",
-      upload: {
-        format: "service-worker",
-        dir: ".next",
-        include: ["**/*"],
-        exclude: [
-          "**/*.pack", 
-          "**/*.pack.gz", 
-          ".next/cache/**/*"
-        ]
-      }
-    },
-    wrangler_version: "4.16.1",
-    compatibility_date: "2023-09-01",
-    compatibility_flags: ["nodejs_compat"],
-    last_updated: new Date().toISOString()
-  };
-  
-  fs.writeFileSync(cfconfigPath, JSON.stringify(cfconfigContent, null, 2));
-  console.log('.cfconfig文件已创建');
-}
-
 // 主函数
 async function main() {
   try {
     console.log('开始Cloudflare Pages构建...');
     
-    // 首先确保.cfignore文件存在
-    ensureCfIgnore();
-    
-    // 清理目录
+    // 首先彻底清理目录
     cleanDirectories();
     
-    // 更新配置文件 - 首先确保.cfignore文件存在
+    // 确保.cfignore文件存在
+    ensureCfIgnore();
+    
+    // 更新配置文件
     updateBabelConfig();
     updateStore();
     
@@ -375,18 +410,25 @@ async function main() {
     // 构建后再次确保.cfignore文件存在，可能会在构建过程中被覆盖
     ensureCfIgnore();
     
-    // 构建后清理和优化
-    cleanWebpackCache();
-    copyCloudflareConfig();
+    // 构建后处理 - 删除大文件
+    console.log('清理大文件...');
+    const nextDir = path.join(process.cwd(), '.next');
+    if (fs.existsSync(nextDir)) {
+      removeLargeFiles(nextDir, 20); // 删除大于20MB的文件
+    }
     
-    // 最后检查
-    console.log('最后检查大文件...');
-    removeLargeFiles(path.join(process.cwd(), '.next'));
+    // 最后的清理步骤，确保没有任何webpack缓存文件
+    findAndDeleteFiles('.next', '*.pack');
+    findAndDeleteFiles('.next', '*.pack.gz');
     
     // 最后再次确认.cfignore文件是否存在
     const cfignorePath = path.join(process.cwd(), '.cfignore');
     if (fs.existsSync(cfignorePath)) {
       console.log('✅ .cfignore文件已存在并将用于部署');
+      
+      // 输出文件内容以确认
+      const content = fs.readFileSync(cfignorePath, 'utf8');
+      console.log('.cfignore内容:', content.substring(0, 100) + '... (已截断)');
     } else {
       console.error('❌ 警告: .cfignore文件不存在，这可能会导致部署问题!');
       ensureCfIgnore(); // 最后一次尝试

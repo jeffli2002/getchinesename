@@ -6,11 +6,18 @@ node_modules/
 .next/cache/webpack/server-production/
 .cloudflare/
 
-# 忽略大型文件
+# 忽略所有webpack缓存相关文件
 **/*.pack
 **/*.pack.gz
+**/*.hot-update.*
+**/.cache
+**/.next/cache/**/*
+
+# 忽略大型文件
 **/*.wasm
+**/*.map
 **/.git
+**/*.gz
 
 # 忽略开发文件
 .env.local
@@ -40,3 +47,6 @@ test-results/
 **/*.bak
 **/*.swp
 **/*.swo
+
+# 限制大文件
+**/*.+(jpg|jpeg|gif|png|ico|mp4|webm|ogg|mp3|wav|pdf|zip|tar|gz|7z|rar) size>10000000

@@ -1,5 +1,6 @@
 /** @type {import('next').NextConfig} */
 const path = require('path');
+const webpack = require('webpack');
 
 // 获取Cloudflare Pages环境变量
 const isProd = process.env.NODE_ENV === 'production';
@@ -9,58 +10,86 @@ const isCloudflarePages = process.env.CF_PAGES === '1';
 const isCloudflare = isCloudflarePages || process.env.NEXT_RUNTIME === 'edge';
 
 const nextConfig = {
-  reactStrictMode: false, // 关闭严格模式，减少重复渲染和一些React警告
+  reactStrictMode: true,
   swcMinify: true,
   images: {
     unoptimized: true,
     domains: ['images.unsplash.com'],
+    disableStaticImages: true,
   },
   
   // 配置路径别名
-  webpack: (config, { isServer, webpack }) => {
-    // 禁用持久缓存，避免大文件问题
+  webpack: (config, { dev, isServer }) => {
+    // 彻底禁用webpack缓存，避免生成大型.pack文件
     config.cache = false;
     
-    // 调整代码分块策略，避免大文件
-    if (config.optimization && config.optimization.splitChunks) {
+    // 禁用持久化缓存
+    if (config.optimization) {
+      config.optimization.moduleIds = 'named';
+      if (typeof config.optimization.emitOnErrors !== 'undefined') {
+        config.optimization.emitOnErrors = true;
+      }
+    }
+    
+    // 设置代码分块策略
+    if (!dev) {
       config.optimization.splitChunks = {
         chunks: 'all',
-        maxInitialRequests: 30,
-        maxAsyncRequests: 30,
-        minSize: 10000,
-        maxSize: 20000000, // 20MB，保持在Cloudflare限制以下
+        maxInitialRequests: 25,
+        minSize: 20000,
+        maxSize: 5000000, // 减小到5MB最大块
         cacheGroups: {
-          vendors: false, // 禁用默认的vendor分组
+          default: false,
+          vendors: false,
+          // 框架代码
           framework: {
             name: 'framework',
-            test: /[\\/]node_modules[\\/](react|react-dom|scheduler|prop-types|next)[\\/]/,
+            test: /[\\/]node_modules[\\/](react|react-dom|scheduler|prop-types)[\\/]/,
             priority: 40,
-            chunks: 'all',
+            enforce: true,
           },
+          // 工具库
           lib: {
             test: /[\\/]node_modules[\\/]/,
+            name(module) {
+              // 得到 node_modules/packageName/sub/path 中的 packageName
+              if (!module.context) return 'vendor';
+              const match = module.context.match(/[\\/]node_modules[\\/](.*?)([\\/]|$)/);
+              const packageName = match ? match[1] : 'vendor';
+              // 避免不符合规范的包名
+              return `npm.${packageName.replace('@', '')}`;
+            },
             priority: 30,
-            minChunks: 2,
-            maxSize: 20000000, // 20MB
-            chunks: 'all',
+            minChunks: 1,
+            reuseExistingChunk: true,
           },
-          components: {
-            name: 'components',
-            test: /[\\/]src[\\/]components[\\/]/,
-            minChunks: 2,
+          // 常用工具函数
+          commons: {
+            name: 'commons',
+            minChunks: 3,
             priority: 20,
-            chunks: 'all',
           },
-          utils: {
-            name: 'utils',
-            test: /[\\/]src[\\/]utils[\\/]/,
+          // 其他业务代码
+          shared: {
+            name: 'shared',
             minChunks: 2,
             priority: 10,
-            chunks: 'all',
-          },
+            reuseExistingChunk: true,
+          }
         },
       };
     }
+    
+    // 避免大型依赖
+    if (!isServer) {
+      config.externals = [...(config.externals || [])];
+    }
+    
+    // 忽略生成大型source maps
+    if (!dev && !isServer) {
+      config.devtool = false;
+    }
+    
     // 添加路径别名
     config.resolve.alias['@'] = path.join(__dirname, 'src');
     
@@ -73,42 +102,6 @@ const nextConfig = {
         })
       );
     }
-
-    // 强制禁用缓存，避免大文件问题
-    config.cache = false;
-    
-    // 优化分块策略，减小文件大小
-    config.optimization.splitChunks = {
-      chunks: 'all',
-      maxInitialRequests: Infinity,
-      minSize: 20000,
-      maxSize: 20 * 1024 * 1024, // 20MB，低于Cloudflare的25MB限制
-      cacheGroups: {
-        vendor: {
-          test: /[\\/]node_modules[\\/]/,
-          name(module) {
-            // 得到 node_modules/packageName/sub/path 中的 packageName
-            if (!module.context) return 'vendor';
-            const match = module.context.match(/[\\/]node_modules[\\/](.*?)([\\/]|$)/);
-            const packageName = match ? match[1] : 'vendor';
-            // 避免不符合规范的包名
-            return `npm.${packageName.replace('@', '')}`;
-          },
-          priority: 10,
-        },
-        commons: {
-          minChunks: 2,
-          priority: 5,
-          reuseExistingChunk: true,
-        },
-        styles: {
-          name: 'styles',
-          test: /\.css$/,
-          chunks: 'all',
-          enforce: true,
-        },
-      },
-    };
     
     // 减小生成文件的大小，禁用不必要的功能
     if (isProd) {
@@ -116,9 +109,6 @@ const nextConfig = {
       config.plugins = config.plugins.filter(
         (plugin) => plugin.constructor.name !== 'HotModuleReplacementPlugin'
       );
-      
-      // 禁用source maps
-      config.devtool = false;
       
       // 禁用模块保留
       if (config.optimization) {
@@ -138,7 +128,7 @@ const nextConfig = {
       
       // 设置更保守的分块大小
       if (config.optimization) {
-        config.optimization.splitChunks.maxSize = 15 * 1024 * 1024; // 15MB，留有余量
+        config.optimization.splitChunks.maxSize = 5 * 1024 * 1024; // 5MB，留有余量
       }
       
       // 完全禁用缓存持久化
@@ -149,6 +139,19 @@ const nextConfig = {
         ...config.output,
         path: path.join(__dirname, '.next'),
         clean: true, // 构建前清理输出目录
+      };
+      
+      // 禁用文件持久化缓存
+      if (!config.plugins) {
+        config.plugins = [];
+      }
+      
+      // 避免大文件生成
+      config.performance = {
+        ...config.performance,
+        maxAssetSize: 20000000, // 20MB
+        maxEntrypointSize: 20000000, // 20MB
+        hints: 'warning',
       };
     }
     
@@ -170,6 +173,12 @@ const nextConfig = {
 
   env: {
     NEXT_PUBLIC_BASE_URL: process.env.NEXT_PUBLIC_BASE_URL || '',
+  },
+  
+  // 禁用webpack5的持久缓存
+  experimental: {
+    disableStaticImages: true,
+    cpus: 1,  // 限制CPU使用
   },
 
   // Cloudflare Pages优化配置
@@ -197,6 +206,14 @@ const nextConfig = {
       formats: ['image/webp'],           // 只使用WebP格式
     },
   }),
+
+  // 只生成所需页面
+  exportPathMap: async function () {
+    return {
+      '/': { page: '/' },
+      '/404': { page: '/404' },
+    };
+  },
 };
 
 module.exports = nextConfig; 

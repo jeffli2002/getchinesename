@@ -209,9 +209,98 @@ rm -rf .next/cache/webpack
 
 # Cloudflare Pages 部署脚本
 
+# 检查.cfconfig文件是否存在
+echo "检查.cfconfig文件..."
+if [ ! -f ".cfconfig" ]; then
+  echo "未找到.cfconfig文件，将创建默认配置..."
+  node -e "
+    const fs = require('fs');
+    const cfconfigContent = {
+      name: 'getchinesename',
+      config_dir: 'cloudflare-config',
+      site: {
+        bucket: '.next',
+        exclude: ['**/*.pack', '**/*.pack.gz', '.next/cache/**/*']
+      },
+      build: {
+        command: 'node cloudflare-pages-build.js'
+      },
+      compatibility_date: '2023-09-01',
+      compatibility_flags: ['nodejs_compat'],
+      last_updated: new Date().toISOString()
+    };
+    fs.writeFileSync('.cfconfig', JSON.stringify(cfconfigContent, null, 2));
+    console.log('.cfconfig文件已创建');
+  "
+fi
+
 # 清理旧的构建
 echo "清理旧的构建..."
 rm -rf .next
+
+# 确保.cfignore文件正确更新
+echo "更新.cfignore文件..."
+if [ -f "cfignore.txt" ]; then
+  cp cfignore.txt .cfignore
+  echo "已从cfignore.txt更新.cfignore文件"
+else
+  # 如果cfignore.txt不存在，创建默认的.cfignore文件
+  cat > .cfignore << EOF
+# 忽略文件夹
+node_modules/
+.next/cache/
+.next/cache/webpack/
+.next/cache/webpack/client-production/
+.next/cache/webpack/server-production/
+.cloudflare/
+
+# 忽略所有webpack缓存相关文件
+**/*.pack
+**/*.pack.gz
+**/*.hot-update.*
+**/.cache
+**/.next/cache/**/*
+
+# 忽略大型文件
+**/*.wasm
+**/*.map
+**/.git
+**/*.gz
+
+# 忽略开发文件
+.env.local
+.env.development
+.env.development.local
+.npm/
+.eslintcache
+.vscode/
+.idea/
+
+# 忽略日志
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+logs/
+*.log
+
+# 忽略测试文件
+coverage/
+.nyc_output/
+playwright-report/
+test-results/
+
+# 忽略备份文件
+**/*~
+**/*.bak
+**/*.swp
+**/*.swo
+
+# 限制大文件
+**/*.+(jpg|jpeg|gif|png|ico|mp4|webm|ogg|mp3|wav|pdf|zip|tar|gz|7z|rar) size>10000000
+EOF
+  echo "创建了默认的.cfignore文件"
+fi
 
 # 运行定制的构建脚本
 echo "执行 Cloudflare Pages 专用构建..."
@@ -228,8 +317,19 @@ rm -rf .next/cache/webpack/server-production
 echo "查找并删除大文件..."
 find .next -type f -size +20M -exec rm -f {} \;
 
+# 读取项目名称从.cfconfig
+PROJECT_NAME=$(node -e "
+  try {
+    const fs = require('fs');
+    const config = JSON.parse(fs.readFileSync('.cfconfig', 'utf8'));
+    console.log(config.name || 'getchinesename');
+  } catch (err) {
+    console.log('getchinesename');
+  }
+")
+
 # 部署到 Cloudflare Pages
-echo "部署到 Cloudflare Pages..."
-npx wrangler pages deploy .next --project-name getchinesename
+echo "部署到 Cloudflare Pages，项目名称: $PROJECT_NAME..."
+npx wrangler pages deploy .next --project-name $PROJECT_NAME
 
 echo "部署完成!" 
