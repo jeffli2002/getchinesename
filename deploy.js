@@ -2,6 +2,7 @@
 const fs = require('fs');
 const path = require('path');
 const { rimraf } = require('rimraf');
+const { execSync } = require('child_process');
 
 // 创建babel.config.js文件
 function createBabelConfig() {
@@ -142,97 +143,55 @@ export const LanguageProvider = ({ children }) => {
 
 // 修复组件中的React导入
 function fixReactImports() {
-  const componentsDir = path.join(process.cwd(), 'src');
+  const srcDir = path.join(process.cwd(), 'src');
   
-  if (!fs.existsSync(componentsDir)) {
-    return;
-  }
-  
-  // 递归遍历目录并修复React导入
-  function walkDir(dir) {
-    const files = fs.readdirSync(dir);
-    
-    for (const file of files) {
-      const filePath = path.join(dir, file);
-      const stat = fs.statSync(filePath);
+  // 寻找所有的.tsx和.ts文件
+  try {
+    const findTsxFiles = (dir) => {
+      const entries = fs.readdirSync(dir, { withFileTypes: true });
+      let files = [];
       
-      if (stat.isDirectory()) {
-        walkDir(filePath);
-      } else if (file.endsWith('.tsx') || file.endsWith('.jsx')) {
-        fixFileReactImports(filePath);
-      }
-    }
-  }
-  
-  // 修复文件中的React导入
-  function fixFileReactImports(filePath) {
-    try {
-      let content = fs.readFileSync(filePath, 'utf8');
-      let modified = false;
-      
-      // 完全替换或添加React导入
-      if (!content.includes('import React, { ReactNode }')) {
-        if (content.includes('import React from \'react\';')) {
-          content = content.replace('import React from \'react\';', 'import React, { ReactNode } from \'react\';');
-          modified = true;
-        } else if (content.includes('import React from "react";')) {
-          content = content.replace('import React from "react";', 'import React, { ReactNode } from "react";');
-          modified = true;
-        } else if (!content.includes('import React')) {
-          // 如果没有任何React导入，在文件顶部添加导入
-          content = 'import React, { ReactNode } from \'react\';\n' + content;
-          modified = true;
+      for (const entry of entries) {
+        const fullPath = path.join(dir, entry.name);
+        
+        if (entry.isDirectory()) {
+          files = files.concat(findTsxFiles(fullPath));
+        } else if (entry.name.endsWith('.tsx') || entry.name.endsWith('.ts')) {
+          files.push(fullPath);
         }
       }
       
-      // 替换 React.ReactNode 为 ReactNode
+      return files;
+    };
+    
+    const tsxFiles = findTsxFiles(srcDir);
+    
+    for (const file of tsxFiles) {
+      let content = fs.readFileSync(file, 'utf8');
+      let changed = false;
+      
+      // 修复React导入
+      if (content.includes('import React from "react"') || content.includes("import React from 'react'")) {
+        content = content.replace(/import React from ["']react["'];?/g, 'import React, { ReactNode } from "react";');
+        changed = true;
+      }
+      
+      // 修复 React.ReactNode 为 ReactNode
       if (content.includes('React.ReactNode')) {
         content = content.replace(/React\.ReactNode/g, 'ReactNode');
-        modified = true;
+        changed = true;
       }
       
-      // 特殊处理Layout.tsx文件，确保它的格式完全正确
-      if (filePath.endsWith('Layout.tsx')) {
-        const layoutContent = `import React, { ReactNode } from 'react';
-import Header from './Header';
-import Footer from './Footer';
-
-interface LayoutProps {
-  children: ReactNode;
-}
-
-const Layout = ({ children }: LayoutProps) => {
-  return (
-    <div className="min-h-screen flex flex-col">
-      <Header />
-      <main className="flex-grow">
-        {children}
-      </main>
-      <Footer />
-    </div>
-  );
-};
-
-export default Layout;`;
-        
-        if (content !== layoutContent) {
-          content = layoutContent;
-          modified = true;
-        }
+      if (changed) {
+        fs.writeFileSync(file, content);
+        console.log(`修复了React导入: ${file}`);
       }
-      
-      if (modified) {
-        fs.writeFileSync(filePath, content);
-        console.log(`修复了React导入: ${filePath}`);
-      }
-    } catch (error) {
-      console.error(`修复文件时出错 ${filePath}:`, error);
     }
+    
+    console.log('\n完成React导入修复');
+  } catch (error) {
+    console.error('修复React导入失败:', error);
   }
-  
-  // 开始修复
-  walkDir(componentsDir);
-  console.log('完成React导入修复');
 }
 
 // 删除可能引起问题的文件

@@ -1,66 +1,24 @@
-# Chinese Name Generator
+# 中文名字生成器 (Chinese Name Generator)
 
-一个现代、美观的中文名字生成器网站，帮助用户根据个人信息生成有文化内涵的中文名字。
+一个为外国人生成中文名字的在线工具。
 
-## 功能特点
+## 特点
 
-- 基于用户名字、出生日期、性别和职业生成个性化中文名字
-- 提供三个不同的名字选项（包括单字名和双字名）
-- 通过书法动画展示名字的楷书和行书写法
-- 提供中文名字的发音功能和拼音指导
-- 详细解释每个名字的文化含义和演变
-- 支持英语和法语界面
-- 响应式设计，完美适配移动设备和桌面浏览器
+- 基于姓氏发音匹配推荐中文姓氏
+- 生成符合中文文化习惯的名字
+- 提供名字的意义和发音指导
+- 支持多语言界面
+- 响应式设计，适配所有设备
 
 ## 技术栈
 
-- **框架**：Next.js (React)
-- **样式**：Tailwind CSS
-- **动画**：Framer Motion
-- **状态管理**：Zustand
-- **打包工具**：内置的Next.js工具链
-
-## Cloudflare Pages部署说明
-
-在Cloudflare Pages中，需要使用以下配置：
-
-1. 构建命令: `npm run build`
-2. 输出目录: `.next`
-3. 环境变量:
-   - `NODE_VERSION`: `18.17.0`
-
-如果使用自动部署，请在Cloudflare Pages项目设置中修改这些配置。
-
-## 本地开发
-
-### 安装依赖
-
-```bash
-npm install
-```
-
-# 中文名字生成器
-
-一个可以为外国人生成中文名字的应用。根据输入的英文名字，生成符合中国文化的中文名字，并提供发音和含义解释。
-
-## 功能特点
-
-- 根据英文名字生成中文名字
-- 提供中文名字的拼音和发音
-- 显示名字的文化含义
-- 多语言支持 (英文和法文)
-- 响应式设计，适配各种设备
-
-## 技术栈
-
-- Next.js
-- React
+- Next.js 13
+- React 18
+- TailwindCSS
+- Framer Motion
 - TypeScript
-- Tailwind CSS
-- Zustand (状态管理)
-- Framer Motion (动画效果)
 
-## 本地开发
+## 开发
 
 ```bash
 # 安装依赖
@@ -70,168 +28,62 @@ npm install
 npm run dev
 ```
 
-访问 [http://localhost:3000](http://localhost:3000) 查看应用。
+访问 [http://localhost:3000](http://localhost:3000) 查看结果。
 
-## 构建和部署
-
-### 标准构建
+## 构建
 
 ```bash
+# 创建生产构建
 npm run build
 ```
 
-### Cloudflare Pages 部署
+## Cloudflare Pages 部署
 
-本项目使用 `cloudflare-config` 目录存储 Cloudflare Pages 的配置文件，避免使用隐藏目录无法上传到 GitHub 的问题。
+本项目专门针对Cloudflare Pages进行了优化，以避免部署过程中的常见问题，如文件大小限制。
 
-### 新增配置文件: .cfconfig
+### 部署前准备
 
-项目现在使用 `.cfconfig` 文件存储 Cloudflare Pages 部署的配置信息。这个文件会在部署脚本运行时自动创建，包含以下信息：
+为确保成功部署，我们使用了特殊的构建和部署脚本：
 
-```json
-{
-  "name": "getchinesename",  // 项目名称
-  "config_dir": "cloudflare-config",  // 配置目录
-  "site": {
-    "bucket": ".next",  // 部署目录
-    "exclude": [...]  // 排除的文件
-  },
-  "env": {...},  // 环境变量
-  "compatibility_date": "2023-09-01",
-  "compatibility_flags": ["nodejs_compat"]
-}
-```
-
-如果您需要更改项目名称或其他配置，可以直接编辑此文件，部署脚本将使用此文件中的配置。
-
-### 新增部署方法（解决文件大小限制问题）
-
-我们增加了专门的部署脚本来解决 Cloudflare Pages 的 25MB 文件大小限制问题：
-
-1. **使用专用构建脚本**：
-   ```bash
-   node cloudflare-pages-build.js
-   ```
-   此脚本会清理缓存、优化构建、删除大文件，并生成适合 Cloudflare Pages 的输出。
-
-2. **使用部署脚本**：
-   ```bash
-   # Linux/Mac
-   chmod +x cloudflare-pages-deploy.sh
-   ./cloudflare-pages-deploy.sh
-   
-   # Windows (PowerShell)
-   powershell -File cloudflare-pages-deploy.ps1
-   ```
-
-3. **使用 package.json 命令**：
-   ```bash
-   # Windows
-   npm run deploy:win
-   
-   # Linux/Mac
-   npm run deploy:unix
-   
-   # 通用
-   npm run deploy:cf
-   ```
-
-### 配置文件说明
-
-- `.cfconfig`: Cloudflare Pages 主配置文件（会自动生成）
-- `cloudflare-config/pages-config.json`: Cloudflare Pages 详细配置
-- `cloudflare-config/kv-ignore.json`: 忽略的大型缓存文件配置
-- `cloudflare-config/workers-site/index.js`: Cloudflare Workers 脚本
-- `cloudflare-pages-build.js`: 专用构建脚本，解决大文件问题
-- `cloudflare-deploy.js`: 部署准备脚本
-- `cloudflare-build.js`: 构建优化脚本
-
-### 文件大小限制问题解决方案
-
-Cloudflare Pages 有 25MB 的文件大小限制，项目已经通过以下方式解决：
-
-1. **优化构建配置**：
-   - 禁用 webpack 缓存持久化（避免生成大型 .pack 文件）
-   - 优化代码分块策略，将大型依赖分成更小的块
-   - 移除源代码映射（source maps）以减小构建输出
-
-2. **特殊部署步骤**：
-   - 使用 `cloudflare-pages-build.js` 脚本处理部署前的准备工作
-   - 自动删除超过大小限制的 webpack 缓存文件
-   - 使用 `.cfignore` 和 `cfignore.txt` 确保大型文件不会被上传
-
-3. **项目结构优化**：
-   - 分离 React 相关库和大型依赖
-   - 优化图像和资源加载
-   - 提高代码压缩级别
+1. `cfignore.txt` - 包含需要从部署中排除的文件和目录的列表（不使用隐藏的.cfignore文件，以便于在仓库中看到和管理）
+2. `deploy.js` - 部署前预处理脚本，修复React导入和创建必要的配置文件
+3. `deploy-cloudflare.js` - 专门针对Cloudflare Pages优化的部署脚本
 
 ### 部署命令
 
+使用以下命令部署到Cloudflare Pages：
+
 ```bash
-# 标准部署（构建并部署到 Cloudflare Pages）
-npm run deploy
+# 在Unix/Linux/macOS系统上
+npm run cf:full-deploy
 
-# 只执行部署准备步骤（不执行实际部署）
-npm run cloudflare-deploy
+# 在Windows系统上
+# 方法1: 使用PowerShell脚本
+.\deploy-cloudflare.ps1
 
-# 使用 Cloudflare Pages 部署
-npm run deploy:cf
-
-# 仅执行构建步骤
-node cloudflare-pages-build.js
+# 方法2: 使用Node.js脚本
+npm run cf:full-deploy
 ```
 
-### 部署故障排除
+### 部署过程
 
-如果遇到 `File is too big, it should be under 25 MiB` 错误：
+部署脚本执行以下操作：
 
-1. 确保运行了正确的部署命令：
-   ```bash
-   npm run cloudflare-deploy
-   ```
+1. 清理构建环境和缓存文件
+2. 确保.cfignore文件正确设置，以排除大文件和缓存
+3. 禁用webpack缓存，避免生成超过25MB大小限制的文件
+4. 构建优化的生产版本
+5. 检查并删除任何超过大小限制的文件
+6. 部署到Cloudflare Pages
 
-2. 检查是否生成了大型 .pack 文件：
-   ```bash
-   find .next -name "*.pack" -size +20M
-   ```
-   
-3. 如有必要，手动删除大型文件：
-   ```bash
-   rm -rf .next/cache/webpack
-   ```
+### 故障排除
 
-4. 确保 `.cfignore` 文件正确配置且没有编码问题
+如果部署失败，请检查以下常见问题：
 
-5. 如果上述方法都无效，可以尝试手动上传构建后的文件，排除大型文件
+1. **文件大小超出限制** - Cloudflare Pages限制单个文件最大25MB，检查构建输出
+2. **缓存文件未被排除** - 确保.cfignore或cfignore.txt包含所有webpack缓存目录
+3. **环境变量问题** - 检查Cloudflare Pages环境变量设置
 
-## 贡献
-
-欢迎通过PR和Issue提供贡献。
-
-## 许可
+## 许可证
 
 MIT
-
-# 部署注意事项
-
-## Cloudflare Pages 部署
-
-在Cloudflare Pages部署过程中，需要注意以下几点：
-
-1. 文件大小限制：Cloudflare Pages有25MB的文件大小限制，我们通过以下方式解决：
-   - 使用 `cfignore.txt` 文件（而不是 `.cfignore`）定义部署时需要排除的文件
-   - 修改了webpack缓存策略以避免生成大型pack文件
-   - 优化了代码分块策略
-
-2. 配置文件：
-   - `cfignore.txt` - 定义部署排除规则，会在部署时自动转换为 `.cfignore`
-   - `cloudflare-deploy.js` - 处理部署前的准备工作
-   - `cloudflare-pages-build.js` - Cloudflare Pages专用构建脚本
-
-3. 部署命令：
-   - 使用 `npm run deploy:cf` 命令进行部署
-   - 使用 `npm run build:cf` 命令进行构建
-
-## 为什么使用 cfignore.txt 而不是 .cfignore
-
-由于`.cfignore`是隐藏文件，在某些环境下（如GitHub）上传可能会有问题，所以我们用普通的`cfignore.txt`文件作为源，在部署时自动生成`.cfignore`文件。
