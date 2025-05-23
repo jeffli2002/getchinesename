@@ -131,7 +131,28 @@ function ensureCfIgnore() {
   console.log('确保.cfignore文件正确...');
   
   const cfignorePath = path.join(process.cwd(), '.cfignore');
-  const cfContent = `# 忽略文件夹
+  const cfignoreTxtPath = path.join(process.cwd(), 'cfignore.txt');
+  
+  // 尝试从cfignore.txt读取
+  if (fs.existsSync(cfignoreTxtPath)) {
+    try {
+      const content = fs.readFileSync(cfignoreTxtPath, 'utf8');
+      fs.writeFileSync(cfignorePath, content, 'utf8');
+      console.log('已从cfignore.txt更新.cfignore文件');
+    } catch (err) {
+      console.error('从cfignore.txt读取失败:', err);
+      createDefaultCfIgnore(cfignorePath);
+    }
+  } else {
+    // 如果cfignore.txt不存在，创建默认内容
+    console.log('未找到cfignore.txt，将创建默认的.cfignore');
+    createDefaultCfIgnore(cfignorePath);
+  }
+}
+
+// 创建默认的.cfignore内容
+function createDefaultCfIgnore(filePath) {
+  const defaultContent = `# 忽略文件夹
 node_modules/
 .next/cache/
 .next/cache/webpack/
@@ -174,8 +195,19 @@ test-results/
 **/*.swp
 **/*.swo`;
   
-  fs.writeFileSync(cfignorePath, cfContent);
-  console.log('.cfignore文件已更新');
+  try {
+    fs.writeFileSync(filePath, defaultContent, 'utf8');
+    console.log(`创建了默认的${filePath}文件`);
+    
+    // 同时创建cfignore.txt供后续使用
+    const cfignoreTxtPath = path.join(process.cwd(), 'cfignore.txt');
+    if (!fs.existsSync(cfignoreTxtPath)) {
+      fs.writeFileSync(cfignoreTxtPath, defaultContent, 'utf8');
+      console.log('同时创建了cfignore.txt文件供后续使用');
+    }
+  } catch (err) {
+    console.error(`创建${filePath}失败:`, err);
+  }
 }
 
 // 构建项目
@@ -284,21 +316,64 @@ function copyCloudflareConfig() {
     
     console.log('Cloudflare配置文件已复制');
   }
+
+  // 创建.cfconfig文件 - 包含Cloudflare配置的汇总
+  const cfconfigPath = path.join(process.cwd(), '.cfconfig');
+  const cfconfigContent = {
+    name: "getchinesename",
+    config_dir: "cloudflare-config",
+    site: {
+      bucket: ".next",
+      exclude: [
+        "**/*.pack", 
+        "**/*.pack.gz", 
+        ".next/cache/**/*",
+        ".next/cache/webpack/**/*"
+      ]
+    },
+    build: {
+      command: "node cloudflare-pages-build.js",
+      upload: {
+        format: "service-worker",
+        dir: ".next",
+        include: ["**/*"],
+        exclude: [
+          "**/*.pack", 
+          "**/*.pack.gz", 
+          ".next/cache/**/*"
+        ]
+      }
+    },
+    wrangler_version: "4.16.1",
+    compatibility_date: "2023-09-01",
+    compatibility_flags: ["nodejs_compat"],
+    last_updated: new Date().toISOString()
+  };
+  
+  fs.writeFileSync(cfconfigPath, JSON.stringify(cfconfigContent, null, 2));
+  console.log('.cfconfig文件已创建');
 }
 
 // 主函数
 async function main() {
   try {
+    console.log('开始Cloudflare Pages构建...');
+    
+    // 首先确保.cfignore文件存在
+    ensureCfIgnore();
+    
     // 清理目录
     cleanDirectories();
     
-    // 更新配置文件
+    // 更新配置文件 - 首先确保.cfignore文件存在
     updateBabelConfig();
     updateStore();
-    ensureCfIgnore();
     
     // 构建项目
     buildProject();
+    
+    // 构建后再次确保.cfignore文件存在，可能会在构建过程中被覆盖
+    ensureCfIgnore();
     
     // 构建后清理和优化
     cleanWebpackCache();
@@ -307,6 +382,15 @@ async function main() {
     // 最后检查
     console.log('最后检查大文件...');
     removeLargeFiles(path.join(process.cwd(), '.next'));
+    
+    // 最后再次确认.cfignore文件是否存在
+    const cfignorePath = path.join(process.cwd(), '.cfignore');
+    if (fs.existsSync(cfignorePath)) {
+      console.log('✅ .cfignore文件已存在并将用于部署');
+    } else {
+      console.error('❌ 警告: .cfignore文件不存在，这可能会导致部署问题!');
+      ensureCfIgnore(); // 最后一次尝试
+    }
     
     console.log('✅ Cloudflare Pages 构建完成!');
   } catch (error) {

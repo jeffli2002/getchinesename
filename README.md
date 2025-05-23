@@ -84,6 +84,26 @@ npm run build
 
 本项目使用 `cloudflare-config` 目录存储 Cloudflare Pages 的配置文件，避免使用隐藏目录无法上传到 GitHub 的问题。
 
+### 新增配置文件: .cfconfig
+
+项目现在使用 `.cfconfig` 文件存储 Cloudflare Pages 部署的配置信息。这个文件会在部署脚本运行时自动创建，包含以下信息：
+
+```json
+{
+  "name": "getchinesename",  // 项目名称
+  "config_dir": "cloudflare-config",  // 配置目录
+  "site": {
+    "bucket": ".next",  // 部署目录
+    "exclude": [...]  // 排除的文件
+  },
+  "env": {...},  // 环境变量
+  "compatibility_date": "2023-09-01",
+  "compatibility_flags": ["nodejs_compat"]
+}
+```
+
+如果您需要更改项目名称或其他配置，可以直接编辑此文件，部署脚本将使用此文件中的配置。
+
 ### 新增部署方法（解决文件大小限制问题）
 
 我们增加了专门的部署脚本来解决 Cloudflare Pages 的 25MB 文件大小限制问题：
@@ -101,19 +121,25 @@ npm run build
    ./cloudflare-pages-deploy.sh
    
    # Windows (PowerShell)
-   node cloudflare-pages-build.js
-   rimraf .next/cache
-   npx wrangler pages deploy .next --project-name getchinesename
+   powershell -File cloudflare-pages-deploy.ps1
    ```
 
 3. **使用 package.json 命令**：
    ```bash
+   # Windows
+   npm run deploy:win
+   
+   # Linux/Mac
+   npm run deploy:unix
+   
+   # 通用
    npm run deploy:cf
    ```
 
 ### 配置文件说明
 
-- `cloudflare-config/pages-config.json`: Cloudflare Pages 主配置
+- `.cfconfig`: Cloudflare Pages 主配置文件（会自动生成）
+- `cloudflare-config/pages-config.json`: Cloudflare Pages 详细配置
 - `cloudflare-config/kv-ignore.json`: 忽略的大型缓存文件配置
 - `cloudflare-config/workers-site/index.js`: Cloudflare Workers 脚本
 - `cloudflare-pages-build.js`: 专用构建脚本，解决大文件问题
@@ -185,3 +211,27 @@ node cloudflare-pages-build.js
 ## 许可
 
 MIT
+
+# 部署注意事项
+
+## Cloudflare Pages 部署
+
+在Cloudflare Pages部署过程中，需要注意以下几点：
+
+1. 文件大小限制：Cloudflare Pages有25MB的文件大小限制，我们通过以下方式解决：
+   - 使用 `cfignore.txt` 文件（而不是 `.cfignore`）定义部署时需要排除的文件
+   - 修改了webpack缓存策略以避免生成大型pack文件
+   - 优化了代码分块策略
+
+2. 配置文件：
+   - `cfignore.txt` - 定义部署排除规则，会在部署时自动转换为 `.cfignore`
+   - `cloudflare-deploy.js` - 处理部署前的准备工作
+   - `cloudflare-pages-build.js` - Cloudflare Pages专用构建脚本
+
+3. 部署命令：
+   - 使用 `npm run deploy:cf` 命令进行部署
+   - 使用 `npm run build:cf` 命令进行构建
+
+## 为什么使用 cfignore.txt 而不是 .cfignore
+
+由于`.cfignore`是隐藏文件，在某些环境下（如GitHub）上传可能会有问题，所以我们用普通的`cfignore.txt`文件作为源，在部署时自动生成`.cfignore`文件。

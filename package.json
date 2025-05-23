@@ -11,9 +11,10 @@
     "build": "next build",
     "cloudflare-build": "node cloudflare-build.js",
     "cloudflare-deploy": "node cloudflare-deploy.js",
-    "deploy": "rimraf .next/cache && node cloudflare-deploy.js && wrangler pages deploy .next --config-path=cloudflare-config/pages-config.json",
-    "deploy:cf": "rimraf .next/cache && node cloudflare-deploy.js && wrangler pages deploy .next --config-path=cloudflare-config/pages-config.json --project-name getchinesename",
-    "deploy:win": "rimraf .next/cache && node cloudflare-deploy.js",
+    "deploy": "rimraf .next/cache && node cloudflare-deploy.js && npx wrangler pages deploy .next --config-path=cloudflare-config/pages-config.json",
+    "deploy:cf": "node cloudflare-deploy.js && npx wrangler deploy",
+    "deploy:win": "powershell -File cloudflare-pages-deploy.ps1",
+    "deploy:unix": "bash cloudflare-pages-deploy.sh",
     "deploy:wrangler": "wrangler pages deploy .next",
     "start": "next start",
     "start:alt": "next start -p 3001",
@@ -25,7 +26,8 @@
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:name-generator": "playwright test e2e/name-generator.spec.ts",
     "test:e2e:faq": "playwright test e2e/faq.spec.ts",
-    "test:e2e:home": "playwright test e2e/home.spec.ts"
+    "test:e2e:home": "playwright test e2e/home.spec.ts",
+    "build:cf": "node cloudflare-pages-build.js && next build"
   },
   "dependencies": {
     "@cloudflare/kv-asset-handler": "^0.4.0",
