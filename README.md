@@ -23,6 +23,7 @@
 ```bash
 # 安装依赖
 npm install
+npm install @vercel/analytics
 
 # 启动开发服务器
 npm run dev
