@@ -1,0 +1,10 @@
+User-agent: *
+Allow: /
+
+# 站点地图位置
+Sitemap: https://www.getachinesename.fun/sitemap.xml
+
+# 禁止抓取的页面
+Disallow: /api/
+Disallow: /_next/
+Disallow: /admin/ 
